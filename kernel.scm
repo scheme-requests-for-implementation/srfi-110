@@ -831,6 +831,50 @@
               (list->string (cons #\.
                 (read-until-delim port neoteric-delimiters)))))))))
 
+  ; Read an inline hex escape (after \x), return the character it represents
+  (define (read-inline-hex-escape port)
+    (let* ((chars (read-until-delim port '(#\;)))
+           (n (string->number (list->string chars) 16)))
+      (if (not (eof-object? (my-peek-char port)))
+        (read-char port))
+      (if (not n)
+        (read-error "Bad inline hex escape"))
+      (integer->char n)))
+
+  ; We're inside |...| ; return the list of characters inside.
+  ; Do NOT call fold-case-maybe, because we always use literal values here.
+  (define (read-symbol-elements port)
+    (let ((c (read-char port)))
+      (cond
+        ((eof-object? c) '())
+        ((eqv? c #\|)    '()) ; Expected end of symbol elements
+        ((eqv? c #\\)
+          (let ((c2 (read-char port)))
+            (cond
+              ((eof-object? c) '())
+              ((eqv? c2 #\|)   (cons #\| (read-symbol-elements port)))
+              ((eqv? c2 #\\)   (cons #\\ (read-symbol-elements port)))
+              ((eqv? c2 #\a)   (cons (integer->char #x0007)
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\b)   (cons (integer->char #x0008)
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\t)   (cons (integer->char #x0009)
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\n)   (cons (integer->char #x000a)
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\r)   (cons (integer->char #x000d)
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\f)   (cons (integer->char #x000c) ; extension
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\v)   (cons (integer->char #x000b) ; extension
+                                     (read-symbol-elements port)))
+              ((eqv? c2 #\x) ; inline hex escape =  \x hex_scalar_value ;
+                (cons 
+                      (read-inline-hex-escape port)
+                      (read-symbol-elements port)))
+          )))
+        (#t (cons c (read-symbol-elements port))))))
+
   ; This implements a simple Scheme "read" implementation from "port",
   ; but if it must recurse to read, it will invoke "no-indent-read"
   ; (a reader that is NOT indentation-sensitive).
@@ -915,16 +959,10 @@
                 (read-error "Closing brace without opening")
                 (underlying-read no-indent-read port))
               ((char=? c #\| )
-                ; Scheme extension, |...| symbol (like Common Lisp)
-                ; This is present in R7RS draft 6.
-                ; TODO: Handle \r, \\, \|, \x, etc.
+                ; Read |...| symbol (like Common Lisp)
+                ; This is present in R7RS draft 9.
                 (my-read-char port) ; Consume the initial vertical bar.
-                (let ((newsymbol
-                  ; Do NOT call fold-case-maybe; always use literal values.
-                  (string->symbol (list->string
-                    (read-until-delim port '(#\|))))))
-                  (my-read-char port)
-                  newsymbol))
+                (string->symbol (list->string (read-symbol-elements port))))
               (#t ; Nothing else.  Must be a symbol start.
                 (string->symbol (fold-case-maybe port
                   (list->string

@@ -3,11 +3,10 @@
 <head>
 <title>SRFI 110: Sweet-expressions (t-expressions)</title>
 <meta content="text/html; charset=us-ascii" http-equiv="content-type">
-</head>
-<body>
-
 <!-- This commented out text is for the brittle SRFI tools -->
 <!--
+</head>
+<body>
 <H1>Title</H1>
 
 Sweet-expressions (t-expressions)
@@ -20,7 +19,9 @@ David A. Wheeler, Alan Manuel K. Gloria
 
 This SRFI is currently in ``draft'' status.
 -->
-
+<meta name="description" content="This defines sweet-expressions (t-expressions) for Scheme, building on neoteric-expressions (n-expressions) and curly-infix-expressions (c-expressions). This defines an approach to making Scheme more 'readable' by adding syntactically-relevant indentation, as well as supporting infix and functions whose names precede the opening parenthesis.">
+<meta name="keywords" content="sweet, sweet-expression, sweet-expressions, t-expression, Scheme, Lisp, Common Lisp, neoteric-expression, n-expression, readable, notation, s-expression, s-expr, M-expressions, SRFI, implementation, David Wheeler, David A. Wheeler, Alan Manuel Gloria, Alan Manuel K. Gloria">
+<meta name="generator" content="vim">
 <!-- Copy CSS style of SRFI-64; credits to Per Bothner. -->
 <!-- Note: "style" isn't in HTML 3.2, but SRFI-64 set a precedent
      for allowing this: -->
@@ -34,8 +35,8 @@ This SRFI is currently in ``draft'' status.
   var { font-family: monospace; }
 </style>
 </head>
-<body>
 
+<body>
 <div class="title">
 <h1><a name="title">Title</a></h1>
 <p>Sweet-expressions (t-expressions)</p>
@@ -48,7 +49,7 @@ This SRFI is currently in ``draft'' status.
 
 <h1 id="status">Status</h1>
 <p>
-This SRFI is currently in ``draft'' status.  To see an explanation of
+This SRFI is currently in &#8220;draft&#8221; status.  To see an explanation of
 each status that a SRFI can hold, see <a
 href="http://srfi.schemers.org/srfi-process.html">here</a>.
 
@@ -62,10 +63,12 @@ subscribe to the list.  You can access previous messages via
 
 <ul>
       <li>
-	Received: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.1">2013/03/05</a></li>
+       Received: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.1">2013/03/05</a></li>
+       Draft: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.2">2013/03/07</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
       </ul>
-<p>This SRFI contains all the required sections, including
+<p>
+This SRFI contains all the required sections, including
 an <a href="#abstract">abstract</a>,
 <a href="#rationale">rationale</a>,
 <a href="#specification">specification</a>,
@@ -159,6 +162,7 @@ define factorial(n)
   <li><a href="#disabling-indentation-processing-with-paired-characters">Disabling indentation processing with paired characters</a></li>
   <li><a href="#disabling-indentation-processing-with-an-initial-indent">Disabling indentation processing with an initial indent</a></li>
   <li><a href="#block-comment-indent-significant">Why are the indentations of block comments and datum comments significant?</a></li>
+  <li><a href="#eol">End-of-line (EOL) handling</a></li>
   <li><a href="#eof">End-of-file (EOF) handling</a></li>
   <li><a href="#semicolon">Special semicolon values for an unsweetener</a></li>
   </ul>
@@ -274,11 +278,11 @@ the &#8220;full&#8221; power of s-expressions.
 </p>
 
 <p>
-Recently, using indentation as the sole grouping constuct of a
+Recently, using indentation as the sole grouping construct of a
 language has become popular (in particular
 with the advent of the Python programming language).
 This approach solves the problem of indentation going out of sync
-with the native grouping constuct of the language, and exploits
+with the native grouping construct of the language, and exploits
 the fact that most programmers indent larger programs and expect
 reasonable indentation by others.
 Unfortunately, the Python syntax uses special constructs
@@ -361,12 +365,12 @@ A sweet-expression reader <em>MUST</em> apply these rule clarifications:
 <ol>
 <li>You can indent using one or more of the indent characters,
 which are space, tab, and exclamation point (!).
-Indentation must be <dfn>consistent</dfn>;
-if you use a tab character
-to indent at a certain column position,
-the next line should either have a tab character
-to indent at that same column position,
-or be indented less than that column position.
+Except for lines with initial indents and the first line of a stream,
+every line <em>MUST</em> be <dfn>consistently indented</dfn>.
+A line is consistently indented if
+the indent character sequence of that line, when compared to the
+indent character sequence of the preceding line,
+is equal or one is a prefix of the other.
 </li>
 <li>An unescaped &#8220;;&#8221; not in a string (still) introduces comments
 that end at the end of the line.</li>
@@ -2104,9 +2108,11 @@ where surprising indentation is occurring (e.g., through highlighting),
 so this risk appears to be minimal.</p>
 
 <p>Disabling on initial indent
-also deals with a subtle potential problem in implementation.
-In a reader implementation, if we tried to just accept some indentation
-of the first line and use it as the starting point, we create problems.
+also deals with a subtle problem in implementation.
+We would create significant reader implementation problems
+if we tried to accept expressions
+that began with arbitrary indentation on the first line
+(using that indentation as the starting point).
 Typically readers return a whole value once that value has been
 determined, and in many cases it&#8217;s tricky to store state (such as that
 new indentation value) for an arbitrary port.  By disabling indentation
@@ -2116,14 +2122,20 @@ users a useful tool.</p>
 <p>Since this latter point isn&#8217;t obvious, here&#8217;s
 a little more detailed explanation.  Obviously, to make indentation
 syntactically meaningful, you need to know where an expression indents,
-and where it ends. If you read in a line, and it has the same indentation
-level, that should end the previous expression. If its indentation is
-<em>less</em>, it should close out all the lines with deeper or equal
-indentation.  But we&#8217;re trying to <em>minimize</em> the changes to the
-underlying language, and in particular, we don&#8217;t want to change the &#8220;read&#8221;
+and where it ends.
+If you read in a line, and it has the same indentation
+level, that should end the previous expression.
+If its indentation is <em>less</em>,
+it should close out all the lines with deeper or equal indentation.
+But we&#8217;re trying to <em>minimize</em> the changes to the
+underlying language, and in particular, we don&#8217;t want
+to change the &#8220;read&#8221;
 interface and we&#8217;re not assuming arbitrary amounts of unread-char.
-Scheme R5RS, for example, doesn&#8217;t have a standard unread-char
-at all.  So let&#8217;s say you are trying to read the following:</p>
+Scheme R5RS, for example, doesn&#8217;t have a standard unread-char at all.
+Now imagine that the implementation tries to support
+arbitrary indentatation for the initial line of an expression
+(instead of requiring that expressions normally start at the left edge).
+Let&#8217;s say you are trying to read the following:</p>
 <pre>
 ! ! foo
 ! ! ! bar
@@ -2131,8 +2143,8 @@ at all.  So let&#8217;s say you are trying to read the following:</p>
 ! ! cheese
 </pre>
 <p>You might expect this to
-return three datums: (foo bar), eggs, and cheese. It won&#8217;t, in a typical
-implementation; here&#8217;s why:
+return three datums: (foo bar), eggs, and cheese.
+It won&#8217;t, in a typical implementation; here&#8217;s why:
 <ul>
 <li>
 In the first read(), it reads foo, bar, and it
@@ -2388,6 +2400,51 @@ then it was considered simpler
 to just use the same behavior for both.
 </p>
 
+<h3 id="eol">End-of-line (EOL) handling</h3>
+<p>
+This SRFI only requires support for the end-of-line
+sequences linefeed (LF), carriage return (CR), and CRLF.
+Earlier versions also supported reversed LFCR,
+IBM&#8217;s NEL (U+0085), Unicode line-separator (LS, U+2028), and
+Unicode paragraph-separator (PS, U+2029),
+but these have been dropped.
+This is because in practice the only end-of-line markers
+that are used in practice
+are LF, CR, and CRLF.
+For example, these are the only end-of-line markers included in
+Scheme R7RS draft 9.
+</p>
+<p>
+John Cowan posted on 2013-02-28 that,
+&#8220;NEL is used only on EBCDIC systems, and conversion to ASCII
+usually changes it to LF rather than U+0085.
+LS was Unicode&#8217;s attempt
+to kill CR/LF/CR+LF, which failed completely...&#8221;
+The same problem applies to PS, which is not used in practice.
+</p>
+
+<!--
+John Cowan posted on 2013-02-28,
+"Take it from the guy at the sharp point of the XML 1.1 mess:
+the only newlines anyone cares about are CR, LF, and CR+LF,
+and even CR is obsolescent.
+NEL is used only on EBCDIC systems, and conversion to ASCII
+usually changes it to LF rather than U+0085. LS was Unicode's attempt
+to kill CR/LF/CR+LF, which failed completely..."
+-->
+
+<p>
+Reversed LFCR does not happen in practice, and attempting to
+detect it triggers a bug in many versions of the
+guile implementation of Scheme.
+In many versions of guile, peek-char consumes (instead of just peeking)
+an end-of-file (EOF) marker.
+Thus, after seeing an LF, peeking to see if there is a CR
+would consume any EOF after an LF, making ending interactive
+use awkward on systems that use just LF for end-of-line.
+</p>
+
+
 <h3 id="eof">End-of-file (EOF) handling</h3>
 <p>
 Non-empty files must end with an end-of-line sequence, before any
@@ -2403,8 +2460,9 @@ This requirement is not unique to sweet-expressions.
 For example, several versions of the C language standard say
 &#8220;A source file that is not empty shall end in a new-line character,
 which shall not be immediately preceded by a backslash character&#8221;
-(section 2.1.1.2 of the ANSI C 1989 standard and
-section 5.1.1.2 of the ISO C 1999 standard).
+(section 2.1.1.2 of the ANSI C 1989 standard,
+section 5.1.1.2 of the ISO C 1999 standard, and
+section 5.1.1.2 of the ISO/IEC C 2011 standard ISO/IEC 9899:2011).
 </p>
 <p>
 Sweet-expression reader implementations are free to warn about files
@@ -2628,7 +2686,7 @@ and followed by space or tab, is that operator
 applied to the sweet-expression starting at the same line.
 For example, a complex indented structure can be
 quoted simply by prefixing a single quote and space.
-This makes it easy to abbreviations to complex indented structures.
+This makes it easy to add abbreviations to complex indented structures.
 An abbreviation alone on a line (after indentation), followed by
 an indented expression, applies that abbreviation to the expression;
 this seems to be what &#8220;users expect&#8221;, and supporting it
@@ -3207,8 +3265,8 @@ In particular, the Honu authors state that their
 more natural for many programmers than Lisp notation -
 most notably, using infix notation for operators -
 but that is similarly easy for programmers to extend.
-Honu adds a precedence-based parsing step to a Lisp-like pars-
-ing pipeline to support infix operators and syntax unconstrained
+Honu adds a precedence-based parsing step to a Lisp-like
+parsing pipeline to support infix operators and syntax unconstrained
 by parentheses. Since the job of this step is to turn a relatively
 flat sequence of terms into a Lisp-like syntax tree, we call it
 enforestation.
@@ -3218,11 +3276,25 @@ that it obeys and leverages binding information to support hygiene,
 macro-generating macros, and local macro binding - facilities that
 have proven important for building expressive and composable language
 extensions in Lisp, Scheme, and Racket.&#8221;
+An example of its syntax, per its paper, is:
 </p>
+
+<pre>
+function quadratic(a, b, c) {
+  var discriminant = sqr(b) - 4 * a * c
+  if ( discriminant &lt; 0) {
+    []
+  } else if (discriminant == 0) {
+    [-b / (2 * a)]
+  } else {
+    [-b / (2 * a), b / (2 * a)]
+  }
+}
+</pre>
 
 <p>
 At the surface, perhaps the most obvious difference is that
-Honu uses {} for major structures, in way that looks somewhat similar
+Honu uses {} for major structures, in a way that looks somewhat similar
 to C, instead of using indentation.
 This means that, like Scheme and C, users must use tools to keep
 the visual indentation consistent with the {} that are actually used
@@ -3283,12 +3355,12 @@ Honu&#8217;s approach certainly sacrifices homoiconicity.
 The whole Honu process invokes macros that can transform the results.
 What&#8217;s more, these macros can be defined later.
 As a result, it is not possible to know what a syntactic construct means
-without knowing all the tranformation definitions active at the time
+without knowing all the transformation definitions active at the time
 the construct was read.
 The precedence definitions for infix operators are an example of
 this problem, but this turns out to be systemic in Honu.
 In short,
-Honu&#8217;s approach is at odds with the idea that a
+Honu&#8217;s approach is at odds with the idea that
 a human reader should be able to read just that surface syntax,
 without knowing anything about what macros are active,
 and still know what exactly what the underlying structure will be.
@@ -3297,17 +3369,39 @@ and still know what exactly what the underlying structure will be.
 <p>
 Another complication with Honu is that it is not backwards-compatible
 with existing Lisp constructs.
-In Honu, the "(expression)" production
-"performs the traditional role
+In Honu, the &#8220;(expression)&#8221; production
+&#8220;performs the traditional role
 of parenthesizing an expression to prevent surrounding operators
 with higher precedences from grouping with the constituent parts
-of the expression".
-This is similar to many other languages, but it means
+of the expression&#8221;.
+It seems that internally,
+the base Honu reader <em>does</em> read it in
+as a single-item list.
+But the subsequent enforestation step
+removes any extra layers of parentheses.
+This semantic is similar to many other languages, but it means
 that a Honu reader cannot double as a Scheme reader.
-In contrast, most users could silently switch to a sweet-reader
-and have no idea that it had occurred, since normally-formatted
+In contrast, most users could silently switch to a sweet-expression reader
+and have no idea that a change had occurred, since normally-formatted
 Scheme expressions will continue to work unchanged.
 This means it is much easier to transition to sweet-expressions.
+</p>
+
+<p>
+Honu&#8217;s approach ties together
+desugaring and macro-expansion;
+the text &#8220;<code>foo(bar, quux)</code>&#8221;
+is two datums,
+&#8220;<code>foo</code>&#8221; and &#8220;<code>(bar |,| quux)</code>&#8221;,
+and the enforestation step
+(which doubles as the macro-expansion step)
+converts it to &#8220;<code>(foo bar quux)</code>&#8221;
+at the Racket level.
+Honu&#8217;s macros are not actually the same type as
+the hosting Racket implementation&#8217;s macros.
+A <code>honu-block</code> Racket macro
+calls the enforest routine,
+which then calls Honu-level macros.
 </p>
 
 <p>
@@ -3682,19 +3776,16 @@ foo
 </ol>
 
 <p>
-After being proposed,
-it was suggested that the rule 2 above
+After being proposed, it was suggested that the rule 2 above
 should be amended
 to be similar to equivalent rules in SRFI-49 and this SRFI;
 that is, a single datum on a line by itself
 should be only that datum, not wrapped in a list.
 Further, a &#8220;.&#8221; marker followed by
-a single datum without a child line
-should be a no-op.
+a single datum without a child line should be a no-op.
 </p>
 <p>
-Rule 2 was formulated that way
-since the intention was
+Rule 2 was formulated that way since the intention was
 to build an indentation processor, not a full parser.
 However, further discussion revealed
 that a simple rule could be formulated
@@ -3871,6 +3962,12 @@ You simply cannot presume you know anything about the actual widths
 of different character sequences in this case.
 </p>
 <p>
+Even when only Western symbol sets are used,
+some letters can or must be expressed using combining characters.
+In these cases, what is stored as two characters are supposed
+to be displayed as one.
+</p>
+<p>
 For another example, some East Asian characters,
 <a href='http://www.unicode.org/reports/tr11/'>called fullwidth characters</a>,
 should be displayed on two columns
@@ -3899,8 +3996,7 @@ meaning that indentation expressions
 have potential portability problems.
 </p>
 <p>
-Granted that almost all code
-will not utilize symbols
+Granted that almost all code will not utilize symbols
 containing fullwidth East Asian glyphs,
 one must consider <em>strings</em>
 containing fullwidth East Asian glyphs,
@@ -3928,9 +4024,10 @@ Not to mention that many more characters in UTF-8
 are encoded in 3 or more bytes
 but do not take 3 or more columns,
 just one.
-Characters which can occur in strings,
-which might usefully be placed before
-some <code>:</code> marker.
+Even if these characters do not not occur in identifiers,
+the characters can occur in strings,
+and such strings might usefully be placed before
+a <code>:</code> marker.
 </p>
 <p>
 If we are sensitive to only initial indentation,
@@ -3951,10 +4048,8 @@ R6RS mandates that support.
 
 <p>
 After discussion,
-<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01097.html">
-this proposal was turned down
-by the authors of this SRFI.
-</a>
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01097.html">this proposal was turned down
+by the authors of this SRFI</a>.
 </p>
 
 <h3 id="closing-sublist-unmatched-dedent">Closing SUBLIST by unmatched dedent (&#8220;Beni Formulation of SUBLIST&#8221)</h3>
@@ -4468,7 +4563,10 @@ Also, ANTLR confirms that the given BNF grammar is LL(1).
 These implementations, and the ANTLR checking, suggest that this
 notation is not too difficult to implement and eliminates the risks
 of certain kinds of grammar flaws.
-These implementations have been peer reviewed and passed various test suites.
+These implementations have been peer reviewed.
+In addition, they have passed various test suites;
+the Scheme implementation in particular has passed a test suite
+with hundreds of test cases.
 </p>
 <p>
 The <a href="http://readable.sourceforge.net">Readable Lisp S-expressions Project</a> developed these notations and implementations of them.
@@ -4605,7 +4703,7 @@ specification of the hooks must be included so that the SRFI is
 self-contained.&#8221;</p>
 <p>
 See 
-<a href="src/kernel.scm">the Scheme source code
+<a href="kernel.scm">the Scheme source code
 for the reference implementation</a>.
 </p>
 
@@ -4618,6 +4716,7 @@ for the reference implementation</a>.
 <p>We thank all the participants on the &#8220;readable-discuss&#8221;
 and &#8220;SRFI-105&#8221; mailing lists,
 including John Cowan, Shiro Kawai, Per Bothner, Mark H. Weaver,
+Beni Cherniavsky-Paskin, Arne Babenhauserheide, Ben Booth,
 and many others whose names
 should be here but aren&#8217;t.</p>
 
@@ -4646,8 +4745,11 @@ BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </pre>
-    <hr/>
-    <address>Editor: <a href="mailto:srfi-editors at srfi dot schemers dot org">
+
+<!-- W3C Validator doesn't like "<hr/>" -->
+
+<hr>
+<address>Editor: <a href="mailto:srfi-editors at srfi dot schemers dot org">
              Mike Sperber</a></address>
 </body>
 </html>
