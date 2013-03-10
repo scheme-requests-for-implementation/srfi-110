@@ -62,9 +62,9 @@ subscribe to the list.  You can access previous messages via
 </p>
 
 <ul>
-      <li>
-       Received: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.1">2013/03/05</a></li>
-       Draft: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.2">2013/03/07</a></li>
+      <li>Received: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.1">2013/03/05</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.2">2013/03/07</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.3">2013/03/10</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
       </ul>
 <p>
@@ -385,9 +385,15 @@ until the first end of line.</li>
 not the next sweet expression.
 Datum comments ignore intervening whitespace, including spaces, tabs, and newlines.</li>
 <li>Block comments (<samp>#|</samp>...<samp>|#</samp>) are removed.</li>
-<li>For both datum and block comments, if they
+<li>For all <code>#</code>-based comments
+(i.e. datum comments <code>#;</code>,
+block comments <code>#|</code>...<code>|#</code>,
+the markers <code>#!fold-case</code> <code>#!no-fold-case</code> <code>#!sweet</code> <code>#!curly-infix</code>,
+and anything else an implementation can read
+but does not return a datum),
+if they
 begin immediately after the indent (if any),
-the indentation at the beginning of the datum or block comment is used.
+the indentation at the beginning of the comment is used.
 </li>
 <li>
 A sweet-expression reader <em>MUST</em> accept, as an
@@ -1016,6 +1022,26 @@ define factorial(n)
 </tr>
 
 <tr>
+<!-- Here's another trivial Scheme program, a greatest common divisor function straight from Carl A. Gunter's "Semantics of Programming Languages" page 2: -->
+<td align="left" valign="top">
+<pre>
+define gcd(x y)
+  if {y = 0}
+    x
+    gcd y rem(x y)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (gcd x y)
+  (if (= y 0)
+    x
+    (gcd y (rem x y))))
+</pre>
+</td>
+</tr>
+
+<tr>
 <!-- From "sweeten" -->
 <td align="left" valign="top">
 <pre>
@@ -1324,6 +1350,25 @@ f ; Demo improper lists
 <tr>
 <td align="left" valign="top">
 <pre>
+f ; Demo vertical improper lists
+  x y
+  .
+  z
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(f
+  (x y)
+  .
+  z)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
 ; Demo BEGIN with an indent
   f(a) g(x)
 </pre>
@@ -1332,6 +1377,92 @@ f ; Demo improper lists
 <pre>
 (f a)
 (g x)
+</pre>
+</td>
+</tr>
+
+<tr>
+<!-- 
+; From http://docs.racket-lang.org/ts-guide/quick.html#%28part._.Using_.Typed_.Racket_from_the_.Racket_.R.E.P.L%29
+-->
+<td align="left" valign="top">
+<pre>
+struct: pt ((x : Real) (y : Real))
+{distance : (pt pt -> Real)}
+define distance(p1 p2)
+  sqrt{sqr{pt-x(p2) - pt-x(p1)} +
+       sqr{pt-y(p2) - pt-y(p1)}}
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(struct: pt ((x : Real) (y : Real)))
+(: distance (pt pt -> Real))
+(define (distance p1 p2)
+  (sqrt (+ (sqr (- (pt-x p2) (pt-x p1)))
+           (sqr (- (pt-y p2) (pt-y p1))))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define-library
+  example grid
+  export make rows cols ref each rename(put! set!)
+  import (scheme base)
+  &lt;* begin
+
+define make(n m)
+  let (grid(make-vector(n)))
+    do &lt;* i 0 {i + 1} *&gt;
+    ! {i = n} grid
+    ! let &lt;* v make-vector(m #f alse) *&gt;
+        vector-set! grid i v
+
+define rows(grid) vector-length(grid)
+define cols(grid)
+  vector-length(vector-ref(grid 0))
+
+define ref(grid n m)
+  and
+    {-1 &lt; n &lt; rows(grid)}
+    {-1 &lt; m &lt; cols(grid)}
+    vector-ref vector-ref(grid n) m
+
+define put!(grid n m v)
+  vector-set! vector-ref(grid n) m v
+*&gt;
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define-library
+  (example grid)
+  (export make rows cols ref each (rename put! set!))
+  (import (scheme base))
+  (begin
+
+    (define (make n m)
+      (let ((grid (make-vector n)))
+        (do ((i 0 (+ i 1)))
+            ((= i n) grid)
+            (let ((v (make-vector m #f alse)))
+              (vector-set! grid i v)))))
+
+    (define (rows grid) (vector-length grid))
+    (define (cols grid)
+      (vector-length (vector-ref grid 0)))
+
+    (define (ref grid n m)
+      (and
+        (< -1 n (rows grid))
+        (< -1 m (cols grid))
+        (vector-ref (vector-ref grid n) m)))
+
+    (define (put! grid n m v)
+      (vector-set! (vector-ref grid n) m v))))
 </pre>
 </td>
 </tr>
@@ -1392,7 +1523,7 @@ define init(win area)
 
 <p>
 We have separated the design rationale from the overall rationale,
-as was previously done by SRFI-26, because it is easier to
+as was previously done by SRFI-26 and SRFI-105, because it is easier to
 understand the design rationale after reading the specification.
 It is long because we wish to describe, in some detail, why things are
 done the way they are, including some helpful comparisons to other efforts.
@@ -4658,6 +4789,45 @@ In particular, when indentation processing is active, the name of the
 function is right after the indent, and there are no child lines, simply
 state the function followed by space-separated parameters.
 </p>
+
+<p>
+Both SUBLIST (<code>$</code>) and SPLIT (inline <code>\\</code>)
+allow some limited freedom in laying out the program text
+without disabling indentation processing; feel free to use them.
+For example, in a
+<code>cond</code> construct, you can combine on one line
+a clause&#8217;s test and expression by separating them with <code>$</code>.
+Similarly, the common sequence &#8220;(define (f x) (cond ...))&#8221;
+can be represented by putting <code>define</code> and <code>cond</code>
+on one line and putting <code>$</code> before <code>cond</code>.
+Below are some examples
+that we consider to be quite clear:
+</p>
+<pre>
+define polymorphic-function(a) $ cond
+  type1?(a) $ handle-type1 a
+  type2?(a) $ handle-type2 a
+  type3?(a)
+    display "type3 handling not yet fully operational\n"
+    log-possible-error a
+    handle-type3 a
+  type4?(a) $ cond ; cond-in-cond - very clear
+    type4-subtype1?(a) $ handle-type4-subtype1 a
+    type4-subtype2?(a) $ handle-type4-subtype2 a
+    else               $ error 'polymorphic-function "impossible!" a
+  else      $ error 'polymorphic-function "unrecognized type" a
+
+define probe(x)
+  display "probe: " \\ write x \\ newline()
+
+define buggy-function(a) $ probe
+  define buggy-sub-function(b) $ short-call b
+  body
+  ...
+
+define func-w/return(a) $ call/cc $ lambda (return)
+  body ... return(whatever) ...
+</pre>
 
 
 <h3>Width</h3>

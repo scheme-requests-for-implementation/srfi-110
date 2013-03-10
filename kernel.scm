@@ -174,26 +174,47 @@
     ; getting confused on the distinction between compile-time,
     ; load-time and run-time (apparently, peek-char is not bound
     ; during load-time).
-    (define (my-peek-char p)     (peek-char p))
-    (define (my-read-char p)     (read-char p))
+    (define (my-peek-char fake-port)
+      (if (eof-object? (car fake-port))
+          (car fake-port)
+          (let* ((port (car fake-port))
+                 (char (peek-char port)))
+            (if (eof-object? char)
+              (set-car! fake-port char))
+            char)))
+    (define (my-read-char fake-port)
+      (if (eof-object? (car fake-port))
+          (car fake-port)
+          (let* ((port (car fake-port))
+                 (char (read-char port)))
+            (if (eof-object? char)
+              (set-car! fake-port char))
+            char)))
 
     (define (make-read f)
       (lambda args
         (let ((port (if (null? args) (current-input-port) (car args))))
-          (f port))))
+          (f (list port)))))
 
-    (define (invoke-read read port)
-      (read port))
+    (define (invoke-read read fake-port)
+      (if (eof-object? (car fake-port))
+        (car fake-port)
+        (read (car fake-port))))
 
     ; create a list with the source information
-    (define (get-sourceinfo port)
-      (list (port-filename port)
-            (port-line port)
-            (port-column port)))
+    (define (get-sourceinfo fake-port)
+      (if (eof-object? (car fake-port))
+          #f
+          (let ((port (car fake-port)))
+            (list (port-filename port)
+                  (port-line port)
+                  (port-column port)))))
     ; destruct the list and attach, but only to cons cells, since
     ; only that is reliably supported across Guile versions.
     (define (attach-sourceinfo pos obj)
       (cond
+        ((not pos)
+          obj)
         ((pair? obj)
           (set-source-property! obj 'filename (list-ref pos 0))
           (set-source-property! obj 'line     (list-ref pos 1))
@@ -836,7 +857,7 @@
     (let* ((chars (read-until-delim port '(#\;)))
            (n (string->number (list->string chars) 16)))
       (if (not (eof-object? (my-peek-char port)))
-        (read-char port))
+        (my-read-char port))
       (if (not n)
         (read-error "Bad inline hex escape"))
       (integer->char n)))
@@ -844,12 +865,12 @@
   ; We're inside |...| ; return the list of characters inside.
   ; Do NOT call fold-case-maybe, because we always use literal values here.
   (define (read-symbol-elements port)
-    (let ((c (read-char port)))
+    (let ((c (my-read-char port)))
       (cond
         ((eof-object? c) '())
         ((eqv? c #\|)    '()) ; Expected end of symbol elements
         ((eqv? c #\\)
-          (let ((c2 (read-char port)))
+          (let ((c2 (my-read-char port)))
             (cond
               ((eof-object? c) '())
               ((eqv? c2 #\|)   (cons #\| (read-symbol-elements port)))
@@ -944,18 +965,18 @@
                   (my-read-char port)
                   (my-read-delimited-list no-indent-read #\) port))
               ((char=? c #\) )
-                (read-char port)
+                (my-read-char port)
                 (read-error "Closing parenthesis without opening")
                 (underlying-read no-indent-read port))
               ((char=? c #\[ )
                   (my-read-char port)
                   (my-read-delimited-list no-indent-read #\] port))
               ((char=? c #\] )
-                (read-char port)
+                (my-read-char port)
                 (read-error "Closing bracket without opening")
                 (underlying-read no-indent-read port))
               ((char=? c #\} )
-                (read-char port)
+                (my-read-char port)
                 (read-error "Closing brace without opening")
                 (underlying-read no-indent-read port))
               ((char=? c #\| )
@@ -1070,7 +1091,7 @@
                     (cons prefix
                       (my-read-delimited-list neoteric-read-nocomment #\] port))))))
           ((char=? c #\{ )  ; Implement f{x}
-            (read-char port)
+            (my-read-char port)
             (neoteric-process-tail port
               (attach-sourceinfo pos
                 (let
@@ -1165,7 +1186,7 @@
 
   (define (accumulate-ichar port)
     (if (char-ichar? (my-peek-char port))
-        (cons (read-char port) (accumulate-ichar port))
+        (cons (my-read-char port) (accumulate-ichar port))
         '()))
 
   (define (consume-ff-vt port)
