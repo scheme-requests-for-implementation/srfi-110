@@ -62,9 +62,11 @@ subscribe to the list.  You can access previous messages via
 </p>
 
 <ul>
+      <li>
       <li>Received: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.1">2013/03/05</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.2">2013/03/07</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.3">2013/03/10</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.4">2013/03/14</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
       </ul>
 <p>
@@ -169,6 +171,7 @@ define factorial(n)
   </li>
   <li><a href="#specific-constructs">Other specific sweet-expression constructs</a>
   <ul>
+  <li><a href="#sweet">The #!sweet marker</a></li>
   <li><a href="#grouping-and-splitting">Grouping and splitting (\\)</a></li>
   <li><a href="#initial-group-mean-nothing">Why does initial \\ mean nothing if there are datums afterwards on the same line?</a></li>
   <li><a href="#traditional-abbreviations">Traditional abbreviations</a></li>
@@ -847,6 +850,8 @@ rest returns [Object v]
   : PERIOD /* Improper list */
       (hspace+
         (pn=n_expr hspace* (n_expr error)? {$pn}
+         | COLLECTING hspace* pc=collecting_tail hspace*
+           (n_expr error)? {$pc}
          | empty {(list '.)})
        | empty   {(list '.)})
   | scomment hspace* (sr=rest {$sr} | empty {'()} )
@@ -1419,7 +1424,7 @@ define make(n m)
     do &lt;* i 0 {i + 1} *&gt;
     ! {i = n} grid
     ! let &lt;* v make-vector(m #f alse) *&gt;
-        vector-set! grid i v
+    !   vector-set! grid i v
 
 define rows(grid) vector-length(grid)
 define cols(grid)
@@ -1463,6 +1468,32 @@ define put!(grid n m v)
 
     (define (put! grid n m v)
       (vector-set! (vector-ref grid n) m v))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define foo(x) . &lt;*
+
+define bar(y)
+! y
+
+define baz(z)
+! z
+*&gt;
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (foo x)
+
+  (define (bar y)
+    y)
+
+  (define (baz z)
+    z))
 </pre>
 </td>
 </tr>
@@ -2569,7 +2600,8 @@ Reversed LFCR does not happen in practice, and attempting to
 detect it triggers a bug in many versions of the
 guile implementation of Scheme.
 In many versions of guile, peek-char consumes (instead of just peeking)
-an end-of-file (EOF) marker.
+an end-of-file (EOF) marker
+(<a href="http://debbugs.gnu.org/cgi/bugreport.cgi?bug=12216">bug 12216</a>).
 Thus, after seeing an LF, peeking to see if there is a CR
 would consume any EOF after an LF, making ending interactive
 use awkward on systems that use just LF for end-of-line.
@@ -2660,6 +2692,53 @@ These rules are based on the <i>unsweeten</i> tool.
 The following subsections describe other specific
 sweet-expression constructs, including why they are defined the
 way they are.
+</p>
+
+<h3 id="sweet">The #!sweet marker</h3>
+
+<p>
+The marker <code>#!sweet</code> is intended to be used
+before any sweet-expressions.
+This improves backwards compatibility; readers can by default
+read only traditional s-expressions, and only change when they
+receive <code>#!sweet</code>.
+Readers are allowed, but not required, to accept sweet-expressions
+before this marker.
+</p>
+
+<p>
+The marker <code>#!sweet</code> was chosen as an analogy
+to similar markers, such as
+<code>#!fold-case</code> and <code>#!no-fold-case</code>
+(R6RS and R7RS),
+<code>#!r6rs</code> (R6RS), and
+<code>#!curly-infix</code> (SRFI-105).
+</p>
+
+<p>
+A list expression such as <code>(srfi&nbsp;110)</code>
+was intentionally <i>not</i> used.
+If this was used, a reader would not be able to easily
+distinguish between (1) a list to read and
+(2) a command to change modes.
+Also, not all Scheme systems support ways to invoke SRFIs,
+or even a module system, and there are many module systems in use.
+A special marker avoids these issues.
+</p>
+
+<p>
+On 2013-03-07 Jos Koot reported that this should work well
+with Racket, a popular Scheme implementation.
+Racket&#8217;s documents say:
+&#8220;#! is an alias for #lang followed by a space when #! is followed by
+alphanumeric ASCII, +, -, or _.
+Use of this alias is discouraged except as
+needed to construct programs that conform to certain grammars,
+such as that of R6RS [Sperber07].&#8221;
+Since <code>#!sweet</code> is indeed defined by a grammar,
+this is consistent.
+Jos Koot continues,
+&#8220;I see no problem here for an implementation in Racket.&#8221;
 </p>
 
 <h3 id="grouping-and-splitting">Grouping and splitting (\\)</h3>
@@ -4820,7 +4899,7 @@ define polymorphic-function(a) $ cond
 define probe(x)
   display "probe: " \\ write x \\ newline()
 
-define buggy-function(a) $ probe
+define buggy-function(a) $ probe $ let ()
   define buggy-sub-function(b) $ short-call b
   body
   ...
@@ -4887,6 +4966,7 @@ for the reference implementation</a>.
 and &#8220;SRFI-105&#8221; mailing lists,
 including John Cowan, Shiro Kawai, Per Bothner, Mark H. Weaver,
 Beni Cherniavsky-Paskin, Arne Babenhauserheide, Ben Booth,
+David Vanderson,
 and many others whose names
 should be here but aren&#8217;t.</p>
 

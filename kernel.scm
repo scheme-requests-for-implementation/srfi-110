@@ -1237,6 +1237,16 @@
           (#t
             results)))))
 
+  ; read n_expr, but process collecting list.
+  (define (n_expr_or_collecting port)
+    (let* ((results (n_expr port))
+           (type (car results))
+           (expr (cadr results)))
+      (cond
+        ((eq? type 'collecting)
+          (list 'normal (collecting_tail port)))
+        (#t results))))
+
   ; Check if we have abbrev+whitespace.  If the current peeked character
   ; is one of certain whitespace chars,
   ; return 'abbrevw as the marker and abbrev_procedure
@@ -1400,7 +1410,7 @@
             (begin
               (hspaces port)
               (if (not (is_initial_comment_eol (my-peek-char port)))
-                (let* ((pn_full_results (n_expr port))
+                (let* ((pn_full_results (n_expr_or_collecting port))
                        (pn_stopper      (car pn_full_results))
                        (pn_value        (cadr pn_full_results)))
                   (hspaces port)
