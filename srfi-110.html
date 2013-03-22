@@ -67,6 +67,7 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.2">2013/03/07</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.3">2013/03/10</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.4">2013/03/14</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.5">2013/03/22</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
       </ul>
 <p>
@@ -153,7 +154,7 @@ define factorial(n)
   <li><a href="#srfi-49">What is the relationship between sweet-expressions and SRFI-49 (I-expressions)?</a></li>
   <li><a href="#separate-105">Why are sweet-expression separate from curly-infix and neoteric-expressions as defined in SRFI-105?</a></li>
   <li><a href="#writing-out-results">Writing out results</a></li>
-  <li><a href="#backwards-compatibility">Backwards compatibility</a></li>
+  <li><a href="#backwards-compatibility">Backwards compatibility (well-formatted s-expressions)</a></li>
   </ul>
   </li>
   <li><a href="#whitespace-indentation-comment">Whitespace, indentation, and comment handling</a>
@@ -369,7 +370,8 @@ A sweet-expression reader <em>MUST</em> apply these rule clarifications:
 <li>You can indent using one or more of the indent characters,
 which are space, tab, and exclamation point (!).
 Except for lines with initial indents and the first line of a stream,
-every line <em>MUST</em> be <dfn>consistently indented</dfn>.
+every line <em>MUST</em> be <dfn>consistently indented</dfn>
+when indentation processing is active.
 A line is consistently indented if
 the indent character sequence of that line, when compared to the
 indent character sequence of the preceding line,
@@ -455,9 +457,10 @@ The marker &#8220;$$$&#8221; <em>MUST</em> be reserved for future use.
 
 <p>
 The markers for the advanced sweet-expression features <em>MUST</em>
-only be accepted as such when indentation processing is active,
-and character sequence <em>MUST NOT</em> be considered one of those
-markers if it does not begin with exactly the marker&#8217;s first character.
+only be accepted as such when indentation processing is active.
+A character sequence <em>MUST NOT</em> be considered one of those
+markers (or as the dot operator) if it
+does not begin with exactly the marker or operator&#8217;s first character.
 For example, <samp><tt>{$}</tt></samp>
 <em>MUST NOT</em> be interpreted as the SUBLIST marker; instead, it
 <em>MUST</em> be interpreted as the symbol <samp>$</samp>.
@@ -505,6 +508,29 @@ or end-of-file,
 and the formats
 <tt>#!/</tt>&nbsp;...&nbsp;<tt>!#</tt> and
 <tt>#!.</tt>&nbsp;...&nbsp;<tt>!#</tt> as multi-line non-nesting comments.
+</p>
+
+<p>
+A sweet-expression reader <em>MAY</em> implement datum labels
+with syntax <code>#<i>number</i>=<i>datum</i></code>.
+If the first character after the equal sign is not whitespace,
+such a reader <em>SHOULD</em> read it as a neoteric-expression.
+If the first character after the equal sign is whitespace,
+a datum reader <em>MAY</em> reject it.
+A reader <em>MAY</em> also accept a datum label
+that is an initial expression of a <i>head</i> production (see the BNF below),
+with a trailing space or tab,
+as labelling the rest of the sweet-expression.
+</p>
+
+<p>
+A <i>well-formatted</i> s-expression is an expression interpreted
+identically by both traditional s-expressions and by sweet-expressions.
+A well-formatted file is a file interpreted identically
+by both traditional s-expressions and sweet-expressions.
+(In practice,
+<a href="#backwards-compatibility">most s-expressions used in
+real programs are well-formatted</a>.)
 </p>
 
 <p>
@@ -805,6 +831,14 @@ collecting_tail returns [Object v]
   | (FF | VT)+ EOL retry2=collecting_tail {$retry2}
   | collecting_end {'()} ;
 
+// Process line after ". hspace+" sequence.  Does not go past current line.
+post_period returns [Object v]
+  : scomment hspace* rpt=post_period {$rpt} // (scomment hspace*)*
+    | pn=n_expr hspace* (scomment hspace*)* (n_expr error)? {$pn}
+    | COLLECTING hspace* pc=collecting_tail hspace*
+      (scomment hspace*)* (n_expr error)? {$pc}
+    | /*empty*/ {"."} ;
+
 // Production "head" reads 1+ n-expressions on one line; it will
 // return the list of n-expressions on the line.  If there is one n-expression
 // on the line, it returns a list of exactly one item; this makes it
@@ -825,17 +859,15 @@ collecting_tail returns [Object v]
 
 head returns [Object v]
   : PERIOD /* Leading ".": escape following datum like an n-expression. */
-      (hspace+
-        (pn=n_expr hspace* (n_expr error)? {(list $pn)}
-         | empty  {(list '.)} )
-       | empty    {(list '.)} )
+      (hspace+ pp=post_period {(list $pp)}
+       | /*empty*/    {(list '.)} )
   | COLLECTING hspace* collecting_tail hspace*
       (rr=rest            {(cons $collecting_tail $rr)}
-       | empty            {(list $collecting_tail)} )
+       | /*empty*/        {(list $collecting_tail)} )
   | basic=n_expr_first /* Only match n_expr_first */
       ((hspace+ (br=rest  {(cons $basic $br)}
-                 | empty  {(list $basic)} ))
-       | empty            {(list $basic)} ) ;
+                 | /*empty*/  {(list $basic)} ))
+       | /*empty*/            {(list $basic)} ) ;
 
 // Production "rest" production reads the rest of the expressions on a line
 // (the "rest of the head"), after the first expression of the line.
@@ -848,20 +880,16 @@ head returns [Object v]
 
 rest returns [Object v]
   : PERIOD /* Improper list */
-      (hspace+
-        (pn=n_expr hspace* (n_expr error)? {$pn}
-         | COLLECTING hspace* pc=collecting_tail hspace*
-           (n_expr error)? {$pc}
-         | empty {(list '.)})
-       | empty   {(list '.)})
-  | scomment hspace* (sr=rest {$sr} | empty {'()} )
+      (hspace+  pp=post_period {$pp}
+       | /*empty*/   {(list '.)})
+  | scomment hspace* (sr=rest {$sr} | /*empty*/ {'()} )
   | COLLECTING hspace* collecting_tail hspace*
     (rr=rest             {(cons $collecting_tail $rr)}
-     | empty             {(list $collecting_tail)} )
+     | /*empty*/             {(list $collecting_tail)} )
   | basic=n_expr
       ((hspace+ (br=rest {(cons $basic $br)}
-                 | empty {(list $basic)} ))
-       | empty           {(list $basic)} ) ;
+                 | /*empty*/ {(list $basic)} ))
+       | /*empty*/           {(list $basic)} ) ;
 
 // Production "body" handles the sequence of 1+ child lines in an it_expr
 // (e.g., after a "head"), each of which is itself an it_expr.
@@ -886,7 +914,7 @@ body returns [Object v]
 // Postcondition: it-expr ended by consuming EOL + examining indent
 // Note: This BNF presumes that "*&gt;" generates multiple tokens,
 // "EOL DEDENT* COLLECTING_END", and resets the indentation list.
-// You can change the BNF below to allow "head empty", and handle dedents
+// You can change the BNF below to allow "head /*empty*/", and handle dedents
 // by directly comparing values; then "*&gt;" only needs to generate
 // COLLECTING_END. But this creates a bunch of ambiguities
 // like a 'dangling else', which must all be disambiguated by accepting
@@ -902,15 +930,15 @@ it_expr returns [Object v]
         // To allow \\ EOL as line-continuation, instead do:
         //   comment_eol same more=it_expr {(append $head $more)}
         comment_eol error
-        | empty {(monify $head)} )
+        | /*empty*/ {(monify $head)} )
      | SUBLIST hspace* /* head SUBLIST ... case */
        (sub_i=it_expr {(append $head (list $sub_i))}
         | comment_eol error )
      | comment_eol // Normal case, handle child lines if any:
        (indent children=body {(append $head $children)}
-        | empty              {(monify $head)} /* No child lines */ )
+        | /*empty*/          {(monify $head)} /* No child lines */ )
     // If COLLECTING_END doesn't generate multiple tokens, can do:
-    // | empty               {(monify $head)}
+    // | /*empty*/           {(monify $head)}
      ))
   | (GROUP_SPLIT | scomment) hspace* /* Initial; Interpet as group */
       (group_i=it_expr {$group_i} /* Ignore initial GROUP/scomment */
@@ -953,7 +981,6 @@ t_expr returns [Object v]
   | initial_indent_with_bang error
   | EOF {(generate_eof)} /* End of file */
   | it_expr {$it_expr} /* Normal case */ ;
-
 </pre>
 
 <h1><a name="examples">Examples</a></h1>
@@ -1374,6 +1401,22 @@ f ; Demo vertical improper lists
 <tr>
 <td align="left" valign="top">
 <pre>
+; Torture test
+a |.| b {$} c d . .
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+; Presumes |...| supported
+(a |.| b |$| c d . |.|)
+</pre>
+</td>
+</tr>
+
+
+<tr>
+<td align="left" valign="top">
+<pre>
 ; Demo BEGIN with an indent
   f(a) g(x)
 </pre>
@@ -1493,7 +1536,8 @@ define baz(z)
     y)
 
   (define (baz z)
-    z))
+    z)
+)
 </pre>
 </td>
 </tr>
@@ -1995,7 +2039,7 @@ Nothing has fundamentally changed;
 as always, you should implement your Lisp expression writer so that
 it presents a format convenient to both human and machine readers.</p>
 
-<h3 id="backwards-compatibility">Backwards compatibility</h3>
+<h3 id="backwards-compatibility">Backwards compatibility (well-formatted s-expressions)</h3>
 
 <p>Backwards compatibility with traditional Lisp notation is helpful.
 A reader that can also read traditional s-expressions, formatted
@@ -2005,12 +2049,13 @@ conventionally, is much easier to switch to.
 <p>
 The sweet-expression notation is fully backwards-compatible with
 <em>well-formatted</em> Lisp s-expressions.
+In practice, most s-expressions used in real programs are well-formatted.
 Thus, a user can enable sweet-expressions and continue to read and
 process traditionally-formatted s-expressions as well.
 If an s-expression is so badly formatted that it
-would be interpreted differently, that s-expression could first be sent
-through a traditional s-expression pretty-printer and have the
-problem resolved.
+would be interpreted differently, that s-expression can
+be processed by a traditional s-expression pretty-printer
+and have the problem resolved.
 </p>
 <p>
 The changes that can cause a difference in interpretation are due
@@ -2056,20 +2101,22 @@ followed by &#8220;<samp>(b)</samp>&#8221; in traditional
 Lisp, but this is a single &#8220;<samp>((a)&nbsp;(b))</samp>&#8221;
 in sweet-expressions.
 Note that this interpretation is also disabled by any indentation, so just
-inserting a space on those rare lines where this occurs
-<em>ensures</em> compatibility with the
-sweet-expression indentation processing.
+inserting an initial space on those rare lines where this occurs
+<em>ensures</em> compatibility for this case.
 </li>
 <li>Sweet-expressions also count &#8220;!&#8221; at the beginning of a line as
-an indent character.  This rarely causes any issue, since once you
+an indent character while indentation processing is enabled.
+This rarely causes any issue, since once you
 use an open parenthesis to start an expression any this meaning for
-&#8220;!&#8221; is disabled.
+&#8220;!&#8221; is disabled, and practically all non-trivial s-expressions
+begin with an open parenthesis.
 In addition, the first character on a line other than space, tab, or
 &#8220;!&#8221; also disables this interpretation on that line.
-Generally, you&#8217;d have to have a symbol whose name
-<em>starts</em> with &#8220;!&#8221; before any issue could come up
-(such symbols are unusual), and then use them directly at the top level
-to retrieve its value (which would also be unusual).</li>
+Generally, to have an issue you&#8217;d have to have a symbol whose name
+<em>starts</em> with &#8220;!&#8221;
+(such symbols are extremely unusual), and then use them directly at
+the top level to retrieve its value
+(this would also be extremely unusual).</li>
 </ul>
 
 
@@ -3155,58 +3202,15 @@ is a single datum.
 
 <h3 id="collecting-lists">Collecting lists (&lt;* ... *&gt;)</h3>
 <p>
-Sweet-expressions without collecting lists (&lt;* ... *&gt;)
-work well in a vast number of circumstances.
-However, they can be somewhat awkward for two use cases:
+Each sweet-expression is ended with a blank line, which is usually what you
+want.  There is one circumstance where that behavior is awkward: a long
+sequence of definitions within an initial statement.
+We have developed a solution, collecting lists, that are also
+useful for 1-2 variable let-like statements.
 </p>
-<ol>
-<li>A long sequence of definitions contained within an initial statement.
-This situation occurs in many library definition structures such as
-Scheme R7RS <tt>define-library</tt> and in some larger data structures.</li>
-<li>A let-style statement with one or two variables
-with short initial values.</li>
-</ol>
 <p>
-Let&#8217;s begin with the first use case.
-When there is a long sequence of definitions contained within an
-initial statement, and no special notation like collecting lists,
-all the definitions in the long sequence must be
-indented and none can be separated by a blank line
-(since that would end the entire sequence, not just a definition).
-Indenting almost an entire file is annoying, and needing no blank lines
-for that long invites mistakes.
-</p>
-
-<p>
-For example, here&#8217;s an example from the R7RS Scheme specification
-for define-library:
-</p>
-<pre>
-(define-library
-  (example grid)
-  (export make rows cols ref each (rename put! set!))
-  (import (scheme base))
-  (begin
-    (define (make n m)
-      (let ((grid (make-vector n)))
-        (do ((i 0 (+ i 1)))
-            ((= i n) grid)
-          (let ((v (make-vector m #f alse)))
-            (vector-set! grid i v)))))
-    (define (rows grid) (vector-length grid))
-    (define (cols grid)
-      (vector-length (vector-ref grid 0)))
-    (define (ref grid n m)
-      (and (&lt; -1 n (rows grid))
-           (&lt; -1 m (cols grid))
-           (vector-ref (vector-ref grid n) m)))
-    (define (put! grid n m v)
-      (vector-set! (vector-ref grid n) m v))))
-</pre>
-<p>
-This is easily reformatted into this sweet-expression, but
-notice the long sequence of indented definitions that, if long,
-loses a lot of horizontal space and can invite mistakes:
+An accidental blank line between two internal definitions will end the initial
+statement:
 </p>
 <pre>
 define-library
@@ -3221,6 +3225,8 @@ define-library
         ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
     define rows(grid) vector-length(grid)
     define cols(grid) vector-length(vector-ref(grid 0))
+
+; above blank line prematurely ends define-library
     define ref(grid n m)
       and
         {-1 &lt; n &lt; rows(grid)}
@@ -3228,9 +3234,61 @@ define-library
         vector-ref vector-ref(grid n) m
     define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
 </pre>
+<p>
+You can work around this for short sequences by removing the blank lines or
+replacing them with one of:
+</p>
+<ol>
+<li>a <code>;</code> comment (optionally indented) &mdash;
+the recommended approach</li>
+<li>a correctly-indented GROUP (<code>\\</code>) symbol</li>
+<li>a correctly-indented special comment (<code>#|...|#</code> or <code>#;...</code>)</li>
+</ol>
+<p>
+For longer sequences (say, much longer than a screen),
+use collecting lists (&lt;* ... *&gt;).
+The &lt;* and *&gt; represent opening and closing parentheses,
+but restart indentation processing at the beginning,
+and collect any sweet-expressions inside.
+In a collecting list, horizontal spaces after the initial &lt;* are consumed,
+and then sweet-expressions are read.
+These t-expressions must not be indented
+(though you can indent lines with only ;-comments).
+</p>
 
 <p>
-But wholesale changes to sweet-expressions do not seem warranted
+Here an example of using collecting lists for the library structure above:
+</p>
+<pre>
+define-library
+  example grid
+  export make rows cols ref each rename(put! set!)
+  import scheme(base)
+  &lt;* begin
+
+define make(n m)
+  let (grid(make-vector(n)))
+    do (i(0 {i + 1}))
+    ! {i = n} grid
+    ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
+
+define rows(grid) vector-length(grid)
+define cols(grid) vector-length(vector-ref(grid 0))
+
+define ref(grid n m)
+  and
+    {-1 &lt; n &lt; rows(grid)}
+    {-1 &lt; m &lt; cols(grid)}
+    vector-ref vector-ref(grid n) m
+
+define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
+*&gt;
+</pre>
+<p>
+Why a new construct?  
+</p>
+<p>
+Wholesale changes to sweet-expressions do not seem warranted
 for this special case, because
 there are reasons that sweet-expressions are defined the way they are.
 It is fundamental that a child line is indented from its parent, since
@@ -3243,21 +3301,82 @@ Ending a definition at a blank line is very convenient for interactive use,
 and interactive and file notation should be identical
 (since people often switch between them).
 </p>
+<p>
+Note: Python works around this by having different semantics for files vs.
+interactive use.
+</p>
+<p>
+The collecting list symbols are carefully chosen.
+The characters &lt; and &gt; are natural character pairs that are
+available in ASCII.
+What is more, they are not delimiters, so any underlying
+Scheme reader will not immediately stop on reading them
+(making it easier to reuse an underlying Scheme reader when
+implementing a sweet-expression reader).
+The &#8220;*&#8221; is more arbitrary, but the collecting list markers
+need to be multiple
+characters to distinguish them from the less-than and greater-than procedures,
+and this seemed to be a fairly distinctive token that is rarely used
+in existing code.
+</p>
+<p>
+In some cases, you might want to use a collecting list around a long
+construct, but not actually create a new list.
+This occurs, for example, in a library module system
+with an implicit begin.
+This is not a problem; just use a collecting list after a period (.).
+This will attach the collecting list to the end of the list
+in process of being defined, instead of creating completely subordinate list.
+After all, since
+&#8220;<code>(a&nbsp;b&nbsp;.&nbsp;(c&nbsp;d))</code>&#8221;
+is just
+&#8220;<code>(a&nbsp;b&nbsp;c&nbsp;d)</code>&#8221;,
+when indentation processing is active the line
+&#8220;<code>a&nbsp;b&nbsp;.&nbsp;&lt;*&nbsp;c&nbsp;d&nbsp;*&gt;</code>&#8221;
+is also just
+&#8220;<code>(a&nbsp;b&nbsp;c&nbsp;d)</code>&#8221;.
+Here is an example:
+</p>
+<pre>
+define-library (example grid) . &lt;*
+
+export make rows cols ref each rename(put! set!)
+import scheme(base)
+
+define make(n m)
+  let (grid(make-vector(n)))
+    do (i(0 {i + 1}))
+    ! {i = n} grid
+    ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
+
+define rows(grid) vector-length(grid)
+define cols(grid) vector-length(vector-ref(grid 0))
+
+define ref(grid n m)
+  and
+    {-1 &lt; n &lt; rows(grid)}
+    {-1 &lt; m &lt; cols(grid)}
+    vector-ref vector-ref(grid n) m
+
+define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
+*&gt;
+</pre>
 
 <p>
-Now let&#8217;s look at the second use case.
+Collecting lists can also be used in a let-style statement with one or
+two variables with short initial values.
 The sweet-expression notation cleanly handles cases where let-expression
 variables have complex values (e.g., using \\), but for simple cases
 (1-2 variables having short initial values)
 it can take up more vertical space than traditional formatting.
-Using a leading &#8220;$&#8221; takes up somewhat less vertical space, but it still
+Using a leading &#8220;$&#8221; takes up somewhat less vertical space,
+but it still
 takes up an additional line for a trivial case, it does not work
 the same way for let expressions with 2 variables,
 and David A. Wheeler thinks it is a rather unclear construction.
 In particular, you cannot use
 &#8220;$&nbsp;x&nbsp;5&nbsp;$&nbsp;y&nbsp;7&#8221;
-for a two-variable let statement; that would
-map to
+for a two-variable let statement; that would map to
 <code>((x&nbsp;5&nbsp;(y&nbsp;7)))</code>,
 not
 <code>((x&nbsp;5)&nbsp;(y&nbsp;7))</code>.
@@ -3296,52 +3415,6 @@ let (x(5) y(7))
 </pre>
 
 <p>
-A <i>collecting list</i> is surrounded by the markers &lt;* and *&gt;.
-The &lt;* and *&gt; represent opening and closing
-parentheses, but restart indentation processing
-at the beginning instead of disabling indentation processing,
-and collect any sweet-expressions inside.
-The purpose of collecting lists is to make it easy to clearly
-express these and similar use cases.
-</p>
-
-<p>
-In a collecting list, horizontal spaces after the initial &lt;*
-are consumed, and then sweet-expressions are read.
-These t-expressions must not be indented (though you can indent
-lines with only ;-comments).
-</p>
-
-<p>
-Here an example of using collecting lists for the library structure above:
-</p>
-<pre>
-define-library
-  example grid
-  export make rows cols ref each rename(put! set!)
-  import scheme(base)
-  &lt;* begin
-
-define make(n m)
-  let (grid(make-vector(n)))
-    do (i(0 {i + 1}))
-    ! {i = n} grid
-    ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
-
-define rows(grid) vector-length(grid)
-define cols(grid) vector-length(vector-ref(grid 0))
-
-define ref(grid n m)
-  and
-    {-1 &lt; n &lt; rows(grid)}
-    {-1 &lt; m &lt; cols(grid)}
-    vector-ref vector-ref(grid n) m
-
-define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
-*&gt;
-</pre>
-
-<p>
 Here are some examples of collecting lists for the let-variable cases:
 </p>
 <pre>
@@ -3355,19 +3428,6 @@ let &lt;* x 5 \\ y 7 *&gt;
 </pre>
 
 
-<p>
-The collecting list symbols are carefully chosen.
-The characters &lt; and &gt; are natural character pairs that are
-available in ASCII.
-What is more, they are not delimiters, so any underlying
-Scheme reader will not immediately stop on reading them
-(making it easier to reuse).
-The &#8220;*&#8221; is more arbitrary, but the collecting list markers
-need to be multiple
-characters to distinguish them from the less-than and greater-than procedures,
-and this seemed to be a fairly distinctive token that is rarely used
-in existing code.
-</p>
 
 <h3 id="reserved">Reserved marker ($$$)</h3>
 <p>
