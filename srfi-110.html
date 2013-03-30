@@ -53,6 +53,7 @@ This SRFI is currently in ``draft'' status.
 
 <h1 id="status">Status</h1>
 <p>
+<p>
 This SRFI is currently in &#8220;draft&#8221; status.  To see an explanation of
 each status that a SRFI can hold, see <a
 href="http://srfi.schemers.org/srfi-process.html">here</a>.
@@ -72,8 +73,10 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.4">2013/03/14</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.5">2013/03/22</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.6">2013/03/28</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.7">2013/03/30</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
+
 <p>
 This SRFI contains all the required sections, including
 an <a href="#abstract">abstract</a>,
@@ -108,9 +111,8 @@ a set of some additional abbreviations.
 Sweet-expressions and traditionally formatted s-expressions
 can be freely mixed, allowing the developer
 to easily transition and maximize readability when laying out code.
-For example, a sweet-expression reader would accept
-<i>either</i> the sweet-expression or s-expression format shown below.
-Here is an example:
+Here is an example of a sweet-expression and its equivalent s-expression
+(a sweet-expression reader would accept <i>either</i> format):
 </p>
 
 <table border="1" cellpadding="4">
@@ -118,18 +120,18 @@ Here is an example:
 <tr>
 <td>
 <pre>
-define fibfast(n)  ; Typical function notation
-  if {n &lt; 2}       ; Indentation, infix {...}
-    n              ; Single expr = no new list
-    fibup n 2 1 0  ; Simple function calls
+define fibfast(n)   ; Typical function notation
+  if {n &lt; 2}        ; Indentation, infix {...}
+     n              ; Single expr = no new list
+     fibup n 2 1 0  ; Simple function calls
 </pre>
 </td>
 <td>
 <pre>
 (define (fibfast n)
   (if (&lt; n 2)
-    n
-    (fibup n 2 1 0)))
+      n
+      (fibup n 2 1 0)))
 </pre>
 </td>
 </tr>
@@ -146,6 +148,7 @@ define fibfast(n)  ; Typical function notation
   <li><a href="#tutorial-basics">Basics</a></li>
   <li><a href="#tutorial-clarifications">Clarifications</a></li>
   <li><a href="#tutorial-advanced-features">Advanced features</a></li>
+  <li><a href="#tutorial-implementation">Getting an implementation</a></li>
   </ul></li>
 <li><a href="#specification">Specification</a>
   <ul>
@@ -173,7 +176,7 @@ define fibfast(n)  ; Typical function notation
   </li>
   <li><a href="#whitespace-indentation-comment">Whitespace, indentation, and comment handling</a>
   <ul>
-  <li><a href="#blank-lines">Blank lines</a></li>
+  <li><a href="#empty-lines">Empty lines</a></li>
   <li><a href="#trailing-hspace">Trailing horizontal spaces are ignored</a></li>
   <li><a href="#indentation-characters">Indentation characters (! as indent)</a></li>
   <li><a href="#disabling-indentation-processing-with-paired-characters">Disabling indentation processing with paired characters</a></li>
@@ -304,16 +307,21 @@ original M-expression notation for Lisp</a>.
 However, nearly all of these past notations fail to be
 general (i.e., the notation is independent of an underlying semantic) or
 homoiconic (i.e., the underlying data structure is clear from the syntax).
-We believe a Lisp-based notation <i>needs</i> to be general and homoiconic.
+We believe
+<a href="#general-and-homoiconic">a Lisp-based notation
+<i>needs</i> to be general and homoiconic</a>.
 For example, Lisp-based languages can trivially create new semantic constructs
 (e.g., with macros) or be used to process other constructs;
-a Lisp notation that is not general will always lag behind and lack
-the &#8220;full&#8221; power of s-expressions.
+a Lisp notation that is not general will typically be unable
+to immediately use those new constructs.
+Thus, notations that are not general will always lag behind and
+lack the &#8220;full&#8221; power of s-expressions.
 </p>
 
 <p>
-Recently, using indentation as the sole grouping construct of a
-language has become popular (in particular
+Recently, <a href="#general-and-homoiconic">using indentation
+as the sole grouping construct of a
+language has become popular</a> (in particular
 with the advent of the Python programming language).
 This approach solves the problem of indentation going out of sync
 with the native grouping construct of the language, and exploits
@@ -370,7 +378,7 @@ build on neoteric-expressions (aka n-expressions) as defined in
 <a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
 N-expressions are a simple extension of traditional s-expression notation,
 so valid n-expressions include
-numbers, strings surrounded by double-quotes, and lists
+numbers, strings surrounded by double-quotes, symbols, and lists
 (whitespace-separated n-expressions surrounded by parentheses).
 N-expressions add support for
 infix expressions surrounded by curly braces
@@ -394,13 +402,7 @@ For more details, see
 
 <p>
 Sweet-expressions add the ability to
-deduce parentheses from indentation,
-as well as adding a few additional abbreviations
-to make the notation especially convenient to use.
-Let&#8217;s first examine how parentheses are deduced.
-</p>
-
-<p>
+<a href="#why-indent">deduce parentheses from indentation</a>.
 In sweet-expressions, a line with content consists of one or more
 n-expressions, separated by one or more spaces or tabs.
 If a line is indented more than the previous line, that line is
@@ -419,32 +421,33 @@ Here are some examples:
 <table border="1" cellpadding="4">
 <tr><th>sweet-expression</th><th>s-expression</th></tr>
 <tr>
-<td>
+<td align="left" valign="top">
 <pre>
-a b (c1 c2) d(1 2) e
+a b c(1 2)
 </pre>
 </td>
-<td>
+<td align="left" valign="top">
 <pre>
-(a b (c1 c2) (d 1 2) e)
+(a b (c 1 2))
 </pre>
 </td>
+</tr>
 <tr>
 <!-- Here's another trivial Scheme program, a greatest common divisor function straight from Carl A. Gunter's "Semantics of Programming Languages" page 2: -->
 <td align="left" valign="top">
 <pre>
 define gcd(x y)
   if {y = 0}
-    x
-    gcd y rem(x y)
+     x
+     gcd y rem(x y)
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (define (gcd x y)
   (if (= y 0)
-    x
-    (gcd y (rem x y))))
+      x
+      (gcd y (rem x y))))
 </pre>
 </td>
 </tr>
@@ -452,23 +455,26 @@ define gcd(x y)
 </blockquote>
 
 <p>
-An empty line (a line containing only 0+ spaces and tabs)
-ends an expression once one has begun.
+An <a href="#empty-lines">empty line
+(a line containing only 0+ spaces and tabs)
+ends an expression once one has begun</a>.
 This makes sweet-expressions easy to use interactively; just press
 &#8220;Enter Enter&#8221; to end an expression.
 Empty lines are ignored before an expression begins.
 </p>
 
 <p>
-You can indent using one or more of the indent characters,
-which are space, tab, and the exclamation point (!).
+You can indent using one or more of the indent characters, which are
+<a href="#indentation-characters">space, tab,
+and the exclamation point (!)</a>.
 Lines after the first line
 need to be <dfn>consistently indented</dfn>, that is,
 the current line&#8217;s indentation, when compared to the
 previous line&#8217;s, are equal or one is a prefix of the other.
-Indentation is ignored inside ( ), [ ], and { },
-whether they are prefixed or not.
-This makes sweet-expressions backwards-compatible with traditional
+<a href="#disabling-indentation-processing-with-paired-characters">Indentation
+is ignored inside ( ), [ ], and { },
+whether they are prefixed or not</a>;
+this makes sweet-expressions backwards-compatible with traditional
 s-expressions, and also provides an easy way to disable indentation
 processing if it&#8217;s inconvenient.
 </p>
@@ -483,16 +489,11 @@ Here are a few clarifications:
 that end at the end of the line.</li>
 <li>Lines with only a ;-comment (preceded by 0 or more indent characters)
 are completely ignored - even their indentation (if any) is irrelevant.</li>
-<li>An expression that starts
-indented enables &#8220;initial-indent&#8221; mode,
-a special compatibility mode where indentation is completely ignored.
-Instead, that line is considered a sequence of
-whitespace-separated neoteric-expressions that are each read separately.</li>
 <li>Scheme&#8217;s datum comments (<code>#;</code><i>datum</i>)
 comment out the next neoteric expression,
-not the next sweet expression.
-Datum comments ignore intervening whitespace,
-including spaces, tabs, and newlines.</li>
+not the next sweet expression
+(and please don't follow the semicolon with whitespace).
+</li>
 <li>Special comments are non-whitespace sequences
 other than ;-comments that do not return a datum; they include
 datum comments (<code>#;</code><i>datum</i>),
@@ -500,13 +501,19 @@ block comments (<code>#|</code>...<code>|#</code>),
 and directives
 (such as <code>#!fold-case</code>, <code>#!no-fold-case</code>,
 <code>#!sweet</code>, and <code>#!curly-infix</code>).
-If a special comment
+<a href="#block-comment-indent-significant">If a special comment
 begins immediately after the indent,
-the indentation of the special comment is used.
+the indentation of the special comment is used</a>.
 </li>
 <li>
 A single delimited period (.) still sets the value of the cdr field of a pair.
 </li>
+<li>An expression that
+<a href="#disabling-indentation-processing-with-an-initial-indent">starts
+indented enables &#8220;initial-indent&#8221; mode</a>.
+That line is considered a sequence of whitespace-separated
+neoteric-expressions that are each read separately
+(this also helps backwards compatibility).</li>
 </ol>
 
 <p>
@@ -560,7 +567,7 @@ ff ; Demo special comments
 <tr>
 <td align="left" valign="top">
 <pre>
-f ; Demo improper lists
+f ; Demo improper list
   a . b
 </pre>
 </td>
@@ -575,7 +582,7 @@ f ; Demo improper lists
 <tr>
 <td align="left" valign="top">
 <pre>
-f ; Demo vertical improper lists
+f ; Demo vertical improper list
   x y
   .
   z
@@ -590,16 +597,31 @@ f ; Demo vertical improper lists
 </pre>
 </td>
 </tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+; Initial indent
+    (define x 1) (define y 2)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+
+(define x 1)
+(define y 2)
+</pre>
+</td>
+</tr>
 </table>
 </blockquote>
 
 <h2><a name="tutorial-advanced-features">Advanced features</a></h2>
 
 <p>
-As mentioned above,
-sweet-expressions add a few additional abbreviations,
-which are sometimes called
-sweet-expression &#8220;advanced features&#8221;.
+Sweet-expressions also add a few additional abbreviations,
+sometimes called sweet-expression &#8220;advanced features&#8221;,
+that make sweet-expressions even more pleasant to use.
 These involve the marker &#8220;<code>\\</code>&#8221;
 (called GROUP and SPLIT),
 the marker &#8220;<code>$</code>&#8221; (SUBLIST),
@@ -608,13 +630,15 @@ leading traditional abbreviations
 and the pair of
 markers &#8220;&lt;*&#8221; and &#8220;*&gt;&#8221;
 (which surround a <i>collecting list</i>).
-We will examine each in turn, including some examples.
+Below is an explanation of each.
 </p>
 
 <p>
-The marker <code>\\</code> is specially interpreted.
+The
+<a href="#grouping-and-splitting">marker <code>\\</code>
+is specially interpreted</a>.
 If any n-expressions precede it on the line, it is called SPLIT, and
-it is interpreted
+it is interpreted as
 the start of a new line at the current line&#8217;s indentation.
 Otherwise it is called GROUP,
 and it represents no symbol at all located at that indentation.
@@ -683,12 +707,13 @@ sin 0 \\ cos 0
 </blockquote>
 
 <p>
-The marker <code>$</code> is called SUBLIST.
+The
+<a href="#sublist">marker <code>$</code> is called SUBLIST</a>.
 If <code>$</code> is preceded by any n-expressions on the line,
 the right-hand-side (including any child lines)
 is the last element of the list described on the left-hand side
 of just the line with the <code>$</code>.
-(This is basically the same meaning it has in Haskell.)
+(This was inspired by the similar Haskell operator.)
 If there&#8217;s no left-hand-side,
 the right-hand-side is put in a list.
 Examples:
@@ -756,9 +781,10 @@ run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
 </blockquote>
 
 <p>
-A leading traditional abbreviation
+A
+<a href="#traditional-abbreviations">leading traditional abbreviation
 (quote, comma, backquote, or comma-at)
-located after indentation, and followed by space, tab, or the end-of-line,
+located after indentation, and followed by space, tab, or the end-of-line</a>,
 is interpreted as that operator applied to
 the entire sweet-expression that follows.
 Examples:
@@ -788,13 +814,15 @@ Examples:
 </blockquote>
 
 <p>
-The markers &#8220;&lt;*&#8221; and &#8220;*&gt;&#8221; surround a
-<i>collecting list</i>.
+The
+<a href="#collecting-lists">markers &#8220;&lt;*&#8221;
+and &#8220;*&gt;&#8221; surround a
+<i>collecting list</i></a>.
 This represents a list, but unlike (...), indentation processing
-continues to work, the indentation level is temporary restarted
-at the left edge, and empty lines do not a collecting list.
-These are useful for long lists (e.g., in modules), because they
-shorten indentation and allow empty lines.
+continues to work, the indentation level is temporarily restarted
+at the left edge, and empty lines do not end a collecting list.
+Collecting lists are useful for very long lists (such as module definitions)
+because they shorten indentation and allow empty lines.
 They are also useful in let expressions with short variable expressions.
 The <a href="#examples">examples</a> section has longer examples;
 here are short examples:
@@ -823,13 +851,13 @@ let &lt;* x sqrt(a) *&gt;
 <tr>
 <td align="left" valign="top">
 <pre>
-let &lt;* x $ {oldx - 1} \\ y $ {oldy - 1} *&gt;
+let &lt;* x getx() \\ y gety() *&gt;
 ! {{x * x} + {y * y}}
 </pre>
 </td>
 <td>
 <pre>
-(let ((x (- oldx 1)) (y (- oldy 1)))
+(let ((x (getx)) (y (gety)))
   (+ (* x x) (* y y)))
 </pre>
 </td>
@@ -837,15 +865,28 @@ let &lt;* x $ {oldx - 1} \\ y $ {oldy - 1} *&gt;
 </table>
 </blockquote>
 
+<h2><a name="tutorial-implementation">Getting an implementation</a></h2>
+
 <p>
 Your Scheme implementation may already provide these capabilities
-if you simply enter the <code>#!sweet</code> directive.
+if you simply enter the
+<a href="#sweet"><code>#!sweet</code></a> directive first.
 If your preferred Scheme implementation does not yet support
-sweet-expressions, encourage them to add it, or
-consider trying out the
+sweet-expressions, encourage or help them to add it.
+As an alternative, consider trying out the
 <a href="http://readable.sourceforge.net/">Readable Lisp S-expressions Project</a>
-sample implementation and tools.
+sample implementation and tools, including:
 </p>
+<ul>
+<li><i>unsweeten</i>, which translates sweet-expressions to s-expressions</li>
+<li><i>sweeten</i>, which translates s-expressions to sweet-expressions
+(so you can switch to sweet-expressions) and is itself
+written using sweet-expressions</li>
+<li><i>diff-s-sweet</i>, which reports semantic differences between
+a file of s-expressions and a file of sweet-expressions.
+It can even detect those rare s-expression files that would be
+interpreted differently by a sweet-expression reader.</li>
+</ul>
 
 <p>
 The next two sections provide a more rigorous
@@ -874,7 +915,7 @@ document are to be interpreted as described in
 <p>
 The following subsections provide the
 <a href="#bnf-conventions">Backus-Naur Form (BNF) conventions</a>,
-<a href="#bnf-supporting">supporting definitions in BNF format</a>
+<a href="#bnf-supporting">supporting definitions in BNF format</a>,
 <a href="#bnf-key">key productions in BNF format</a>,
 <a href="#other-requirements">other requirements</a>,
 and specifications about
@@ -962,25 +1003,19 @@ value of the top of the indentation stack):
 <li>If an end-of-line sequence immediately follows the indentation
 and the indentation length is nonzero:
 <ol>
-<li type="a">If the indentation contains &#8220;!&#8221;, it is an error.</li>
-<li type="a">If indentation does not contain &#8220;!&#8221;,
+<li type="a">If the indentation contains &#8220;!&#8221;, it is an error;
+an implementation <em>SHOULD</em> reject it.</li>
+<li type="a">If the indentation does not contain &#8220;!&#8221;,
 it is considered a line with no characters
-(thus indentation is empty)
+(thus indentation has zero length)
 and the rest of these rules are applied.</li>
 </ol>
 </li>
-<li>If top is the empty string and the indentation length is nonzero:
-<ol>
-<li type="a">
-If the indentation does not contain &#8220;!&#8221;, then
-symbol <code>initial_indent_no_bang</code>
+<li>If top is the empty string and the indentation length is nonzero,
+symbol <code>INITIAL_INDENT</code>
 is generated and the reader changes to initial indent mode.
 When an end-of-line sequence is reached
 the mode changes back to indentation processing.
-</li>
-<li type="a">If the indentation does contain &#8220;!&#8221;, then
-symbol <code>initial_indent_with_bang</code> is generated.</li>
-</ol>
 </li>
 <li>If top is not the empty string, and
 &#8220;;&#8221; immediately follows the indentation, the line is skipped
@@ -990,12 +1025,12 @@ and the following line is examined instead.</li>
 (this is called &#8220;same&#8221;).</li>
 <li>If the indentation is longer than top, and top is a prefix of indentation,
 the indentation is pushed onto the indentation stack
-and the symbol <code>indent</code> is generated.</li>
+and the symbol <code>INDENT</code> is generated.</li>
 <li>If top is longer than indentation, and the indentation is a prefix
 of top, the indentation stack is repeatedly popped until
 the new top matches the current indentation or the
 new top is not longer than the indentation;
-a <code>dedent</code> symbol is generated for each pop.
+a <code>DEDENT</code> symbol is generated for each pop.
 The matching top (if any) is not popped.
 If no match is found, it is an error.</li>
 <li>Otherwise, it is an error.</li>
@@ -1023,21 +1058,15 @@ The markers, BNF names, and meanings are:
 </p>
 <ul>
 <li><tt>\\</tt> : GROUP_SPLIT.  This is called GROUP if it immediately follows
-indentation; in this case it represents no symbol at all at that indentation,
-simplifying representations of lists-of-lists.
-Otherwise it is called SPLIT; it represents starting a new line at
-the same indentation as the current line.</li>
-<li><tt>$</tt> : SUBLIST. This makes the right-hand-side (including
-all child lines) the last element of the
-left-hand-side of this line; if there is no left-hand-side,
-the right-hand-side is wrapped into a list.</li>
+indentation; otherwise it is called SPLIT.</li>
+<li><tt>$</tt> : SUBLIST.</li>
 <li><tt>&lt;*</tt> : COLLECTING.  Begins a &#8220;collecting list&#8221;, a
 new list that ends with a matching COLLECTING_END.
 This pushes an empty string onto the indentation stack as
 well as generating the symbol COLLECTING.</li>
 <li><tt>*&gt;</tt> : COLLECTING_END.
 This pops any non-empty strings from the indentation stack (generating a
-dedent for each one),
+<code>DEDENT</code> for each one),
 then pops the empty string initially placed by COLLECTING,
 and then generates the two symbols EOL and finally COLLECTING_END.</li>
 <li><tt>$$$</tt> : RESERVED_TRIPLE_DOLLAR.  Reserved.</li>
@@ -1056,12 +1085,8 @@ The <i>traditional abbreviations</i> are
 which stand for
 quote, quasiquote, unquote-splicing, and unquote respectively.
 In indentation processing mode, a traditional abbreviation
-that is immediately after indentation,
-and is followed by space, tab, or end-of-line, is represented as
+followed by space, tab, or end-of-line is represented as
 APOSW, QUASIQUOTEW, UNQUOTE_SPLICEW, and UNQUOTEW respectively.
-Per the BNF, these
-<em>MUST</em> be interpreted as that abbreviation
-applied to the entire sweet-expression that follows.
 An end-of-line (if any) immediately after these
 abbreviations <em>MUST</em> also generate EOL.
 The <i>syntax-case related abbreviations</i> are
@@ -1097,7 +1122,6 @@ maps to <samp>(f&nbsp;{...})</samp>.</li>
 (inside they&#8217;re a sequence of
 whitespace-separated neoteric-expressions).</li>
 </ol>
-
 
 -->
 
@@ -1135,7 +1159,7 @@ SPACE    : ' ';
 TAB      : '\t';
 PERIOD   : '.';
 
-// Abbreviations not followed by horizontal space are ordinary:
+// Abbreviations not followed by horizontal space/EOL are ordinary:
 APOS           : '\'';
 QUASIQUOTE     : '\`';
 UNQUOTE_SPLICE : ',@';
@@ -1167,9 +1191,12 @@ SHARP_BANG_FILE : '#!' ('/' | '.') (options {greedy=false;} : .)*
 SHARP_BANG_DIRECTIVE : '#!' (('a'..'z'|'A'..'Z'|'_')
                     ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')*)? (SPACE|TAB)* ;
 
-// IMPORTANT SUPPORTING PARSER DEFINITIONS for the BNF
-
 hspace  : SPACE | TAB ;        // horizontal space
+
+// This is for handling non-first n-expressions in initial indent.
+// An implementation MAY implement this as "(hspace | '!')+"
+// (e.g., to avoid retaining state when returning a value).
+hspaces_maybe_bang: hspace+ ;
 
 // Production "abbrevw" is an abbreviation with a following whitespace:
 abbrevw returns [Object v]
@@ -1206,7 +1233,7 @@ n_expr_first returns [Object v]
 sharp_bang_comments : SRFI_22_COMMENT | SHARP_BANG_FILE
                       | SHARP_BANG_DIRECTIVE ;
 scomment : BLOCK_COMMENT
-         | DATUM_COMMENT_START (options : {greedy=true} hspace)* n_expr
+         | DATUM_COMMENT_START (options {greedy=true} : hspace)* n_expr
          | sharp_bang_comments ;
 
 // Production "comment_eol" reads an optional ;-comment (if it exists),
@@ -1228,11 +1255,13 @@ Here are the key BNF productions for sweet-expressions:
 // FF = formfeed (\f aka \u000c), VT = vertical tab (\v aka \u000b)
 
 collecting_tail returns [Object v]
-  : it_expr more=collecting_tail {(cons $it_expr $more)}
-  | (initial_indent_no_bang | initial_indent_with_bang)?
-    comment_eol    retry1=collecting_tail {$retry1}
-  | (FF | VT)+ EOL retry2=collecting_tail {$retry2}
-  | collecting_end {'()} ;
+  : it_expr more=collecting_tail {$v = cons($it_expr.v, $more.v);}
+  | comment_eol    retry1=collecting_tail {$v = $retry1.v;}
+  | INITIAL_INDENT /* Initial indent only allowed for lcomment */
+    LCOMMENT EOL   retry2=collecting_tail {$v = $retry2.v;}
+  | (FF | VT)+ EOL retry3=collecting_tail {$v = $retry3.v;}
+  | COLLECTING_END {$v = null;} ;
+
 
 // Process line after ". hspace+" sequence.  Does not go past current line.
 post_period returns [Object v]
@@ -1282,11 +1311,11 @@ rest returns [Object v]
 body returns [Object v]
   : i=it_expr
      (same
-       ( {isperiodp($i)}? =&gt; f=it_expr dedent
+       ( {isperiodp($i)}? =&gt; f=it_expr DEDENT
            {$f} // Improper list final value
        | {! isperiodp($i)}? =&gt; nxt=body
            {(cons $i $nxt)} )
-     | dedent {(list $i)} ) ;
+     | DEDENT {(list $i)} ) ;
 
 // Production "it_expr" (indented sweet-expressions)
 // is the main production for sweet-expressions in the usual case.
@@ -1302,22 +1331,22 @@ it_expr returns [Object v]
        (sub_i=it_expr {(append $head (list $sub_i))}
         | comment_eol error )
      | comment_eol // Normal case, handle child lines if any:
-       (indent children=body {(append $head $children)}
+       (INDENT children=body {(append $head $children)}
         | /*empty*/          {(monify $head)} /* No child lines */ )
      ))
   | (GROUP_SPLIT | scomment) hspace* /* Initial; Interpet as group */
       (group_i=it_expr {$group_i} /* Ignore initial GROUP/scomment */
        | comment_eol
-         (indent g_body=body {$g_body} /* Normal GROUP use */
+         (INDENT g_body=body {$g_body} /* Normal GROUP use */
           | same ( g_i=it_expr {$g_i} /* Plausible separator */
                    /* Handle #!sweet EOL EOL t_expr */
                    | comment_eol restart=t_expr {$restart} )
-          | dedent error ))
+          | DEDENT error ))
   | SUBLIST hspace* /* "$" first on line */
     (is_i=it_expr {(list $is_i)}
      | comment_eol error )
   | abbrevw hspace*
-      (comment_eol indent ab=body
+      (comment_eol INDENT ab=body
          {(append (list $abbrevw) $ab)}
        | ai=it_expr
          {(list $abbrevw $ai)} ) ;
@@ -1329,12 +1358,11 @@ it_expr returns [Object v]
 t_expr returns [Object v]
   : comment_eol    retry1=t_expr {$retry1}
   | (FF | VT)+ EOL retry2=t_expr {$retry2}
-  | (initial_indent_no_bang | hspace+ ) /* initial indent */
+  | (INITIAL_INDENT | hspaces_maybe_bang) /* initial indent */
     (n_expr {$n_expr}
      | (scomment (options {greedy=true} : hspace)*
        sretry=t_expr {$sretry})
      | comment_eol retry3=t_expr {$retry3} )
-  | initial_indent_with_bang error
   | EOF {(generate_eof)} /* End of file */
   | it_expr {$it_expr} /* Normal case */ ;
 </pre>
@@ -1393,7 +1421,8 @@ are completely ignored - even their indentation (if any) is irrelevant.</li>
 where indentation is completely ignored.
 Instead, a sequence of white-space separated neoteric-expressions is read
 until the first end of line.</li>
-<li>Scheme&#8217;s <code>#;</code> datum comment comments out the next neoteric expression,
+<li>Scheme&#8217;s <code>#;</code> datum comment comments
+out the next neoteric expression,
 not the next sweet expression.
 Datum comments ignore intervening whitespace, including spaces, tabs, and newlines.</li>
 <li>Block comments (<samp>#|</samp>...<samp>|#</samp>) are removed.</li>
@@ -1509,6 +1538,8 @@ A sweet-expression reader <em>SHOULD</em> support
 and
 <a href="http://srfi.schemers.org/srfi-62/">SRFI-62
 (S-expression comments)</a> (<tt>#;</tt><var>datum</var>).
+Portable applications <em>SHOULD NOT</em> include whitespace
+after <code>#;</code> for a datum comment.
 A sweet-expression reader <em>SHOULD</em> support
 <a href="http://srfi.schemers.org/srfi-22/">SRFI-22
 (Running Scheme Scripts on Unix)</a> (where <tt>#!</tt>
@@ -1588,7 +1619,7 @@ that reads sweet-expressions and writes out s-expressions.
 An unsweetener <em>SHOULD</em> specially treat
 lines that begin with a semicolon
 when they are not currently reading an expression (e.g., no expression has
-been read, or the last expression read has been completed with a blank line).
+been read, or the last expression read has been completed with an empty line).
 Such a tool <em>SHOULD</em>
 (when outside an expression) copy exactly
 any line beginning with semicolon followed by a whitespace or semicolon.
@@ -1830,6 +1861,21 @@ let &lt;* x $ cos $ f c *&gt;
 <pre>
 (let ((x (cos (f c))))
   (dostuff x))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+let &lt;* x $ {oldx - 1} \\ y $ {oldy - 1} *&gt;
+! {{x * x} + {y * y}}
+</pre>
+</td>
+<td>
+<pre>
+(let ((x (- oldx 1)) (y (- oldy 1)))
+  (+ (* x x) (* y y)))
 </pre>
 </td>
 </tr>
@@ -2397,13 +2443,13 @@ used SRFI-49 directly.</p>
 However, SRFI-49 turned out to have problems in practice when
 we tried to use it seriously.
 For example,
-in SRFI-49, leading blank lines could produce the empty list <tt>()</tt>
+in SRFI-49, leading empty lines could produce the empty list <tt>()</tt>
 instead of being ignored,
-limiting the use of blank lines and leading to easy-to-create errors.
+limiting the use of empty lines and leading to easy-to-create errors.
 As specified, a SRFI-49 expression would never complete
 until after the next expressions&#8217;s first line was entered, making
 interactive use extremely unpleasant.
-Lines with just spaces and tabs would be considered different from blank
+Lines with just spaces and tabs would be considered different from empty
 lines, creating another opportunity for difficult-to-find errors.
 The symbol <tt>group</tt> is given a special meaning, which is
 inconsistent with the rest of Lisp
@@ -2425,11 +2471,12 @@ is required, so we added sublists, split, and collecting list capabilities.
 </p>
 
 <p>
-Although the SRFI-49 BNF was simple, it was simple in part because
-some whitespace processing requirements were not clear.
-The BNF in this specification makes comment and whitespace
-processing explicit, to make comment and whitespace processing requirements
-clear.
+The SRFI-49 BNF is simpler, but it is simpler in part because
+some whitespace processing requirements are not made clear.
+The BNF in this specification, in contrast, makes comment and whitespace
+processing explicit (e.g., using the hspace non-terminal).
+Our goal was to make comment and whitespace processing requirements
+unambiguous.
 </p>
 
 <p>
@@ -2600,10 +2647,11 @@ and an indentation processing and abbreviation approach based on SRFI-49.
 We then added a few special abbreviations to make
 common constructs especially easy to notate
 (<tt>\\</tt>, <tt>$</tt>, and <tt>&lt;*...*&gt;</tt>).
+That&#8217;s all.
 </p>
 
 <p>
-Since sweet-expressions are essentially superset of s-expression notation,
+Since sweet-expressions are essentially a superset of s-expression notation,
 they are necessarily &#8220;more complex&#8221; than s-expressions.
 But all notations are a trade-off; if a notation is often used,
 it may be useful to add additional syntax to make it easier to read
@@ -2620,12 +2668,21 @@ additional syntax to make these expressions more readable.
 Some people have argued for more complex structures than this,
 and others have argued for less;
 we have tried to strike a balance.
-The notation is actually relatively simple.
-The key BNF definitions
-only required 88 non-comment non-blank lines for 7 productions in ANTLR.
-In contrast, simple datums (such as identifiers and numbers)
+</p>
+
+
+<p>
+The specification itself looks more complex, but that is because
+we have chosen to develop a rigorous specification using an exacting BNF.
+This was in response to lessons learned with SRFI-49;
+SRFI-49 was simpler but left a number of issues underspecified,
+and thus it easily led to different interpretations.
+The key BNF definitions for sweet-expressions
+only require 88 non-comment non-blank lines for 7 productions in ANTLR.
+As a comparison, defining simple datums (such as identifiers and numbers)
+using the same notation
 required more lines (109 non-comment non-blank lines)
-and 52 productions.
+and more productions (52).
 <!-- measurement taken on 2013-03-27 using "sweet.g" -->
 </p>
 
@@ -2639,14 +2696,6 @@ It is possible to work without them, but we believe
 without them the notation would be less pleasant to use.
 </p>
 
-<p>
-The specification itself looks more complex, but in part that is a reaction
-to the ambiguities in SRFI-49.
-SRFI-49 left a number of issues underspecified, which could easily lead to
-different interpretations in implementation.
-We have chosen to develop a rigorous BNF to create a more rigorous
-specification.
-</p>
 
 
 <h2 id="whitespace-indentation-comment">Whitespace, indentation, and comment handling</h2>
@@ -2656,25 +2705,25 @@ sweet-expression constructs related to whitespace, indentation,
 and comment handling, including why they are defined the way they are.
 </p>
 
-<h3 id="blank-lines">Blank lines</h3>
+<h3 id="empty-lines">Empty lines</h3>
 
-<p>In sweet-expressions, a blank line
+<p>In sweet-expressions, an empty line
 always terminates a datum, once an expression has started;
-if (another) expression has not started, blank lines are ignored.
+if (another) expression has not started, empty lines are ignored.
 That means that in a REPL,
 once you&#8217;ve entered a complete expression,
 &#8220;Enter Enter&#8221; will always end it.
-The &#8220;blank
-lines at the beginning are ignored&#8221; rule eliminates a usability problem
+The &#8220;empty lines at the beginning are ignored&#8221;
+rule eliminates a usability problem
 with the original SRFI-49 (I-expression) spec, in which two sequential
-blank lines before an expression surprisingly returned ().
+empty lines before an expression surprisingly returned ().
 This was a serious usability problem.
 The sample
-implementation <em>did</em> end expressions on a blank line - the problem
+implementation <em>did</em> end expressions on an empty line - the problem
 was that the spec didn&#8217;t clearly capture this.</p>
 
 <p>
-Allowing a blank line to end an expression
+Allowing an empty line to end an expression
 represents a trade-off between REPL use and use in a file.
 In a file, a top-level expression could be determined simply by noting
 that the next expression began on the left column.
@@ -2701,13 +2750,13 @@ will be until it is done, so this does not help enough.
 <p>
 In contrast, pressing Enter twice is quite easy (since the user&#8217;s
 finger is already on Enter to press it the first time).
-Thus, the blank line rule is intentionally chosen to help interactive users,
-at a mild cost to non-interactive users (who then cannot use blank lines
+Thus, the emtpy line rule is intentionally chosen to help interactive users,
+at a mild cost to non-interactive users (who then cannot use empty lines
 without ending the expression).
 </p>
 
 <p>It would be possible
-to have blank lines end an expression only in interactive use.
+to have empty lines end an expression only in interactive use.
 In particular, Python does this, since it
 has different rules for interactive use and files.
 However, this means that you couldn&#8217;t cut-and-paste files into
@@ -2721,9 +2770,9 @@ By making &#8220;Enter Enter&#8221; <em>always</em> end an expression,
 the notation stays consistent.</p>
 
 <p>Of course, people sometimes want to have something like
-a blank line in the middle of an s-expression.
+an empty line in the middle of an s-expression.
 The solution is that comment-only lines using &#8220;;&#8221;
-(indented or not) are completely ignored and not even considered blank lines.
+(indented or not) are completely ignored and not even considered empty lines.
 That means you can use comment-only lines for the purpose
 of separating sections in a single datum.
 The indentation of comment-only lines is intentionally ignored;
@@ -2734,11 +2783,11 @@ In very long expressions (e.g., for a set of definitions in a library),
 a collecting list can typically be used.
 </p>
 
-<p>Since a line with only indentation may look exactly identical to a
-blank line, we decided to clearly state that
-&#8220;a line with only indentation is an empty line&#8221;.
+<p>Since a line with only indentation may look exactly identical to an
+empty line, we decided to clearly state that
+line with only spaces and tabs is an empty line.
 This eliminates some nasty usability problems that
-could arise if a &#8220;blank&#8221; line was interpreted differently
+could arise if a &#8220;empty&#8221; line was interpreted differently
 if it had some whitespace in it;
 a silent error like this could be hard to debug.</p>
 
@@ -2821,24 +2870,26 @@ processing; in practice this doesn&#8217;t seem to be a problem.</p>
 indentation processing with an initial indent</h3>
 
 <p>Initial indentation also disables indentation processing,
-which also improves backward
+which improves backward
 compatibility and makes it easy to disable indentation processing where
 convenient.</p>
 
-<p>This improves backward compatibility because a program
+<p>This initial indent mode
+improves backward compatibility because a program
 that uses odd formatting with a different meaning for sweet-expressions
 is more likely to have initial indents.
-Even if this is not
-true, it&#8217;s trivially easy to add an initial indent on oddly-formatted
-old files. This provides a trivial escape, making it easy to support
-old files.  Then even if you have ancient code with odd formatting,
-it would be likely to still &#8220;just work&#8221;
-if there is any initial indentation.
+Even when this is not true, it&#8217;s trivially
+easy to add an initial indent to oddly-formatted old files.
+This provides a trivial escape, making it easy to support old files.
+Then, even if you have ancient code with odd formatting,
+it is more likely to still &#8220;just work&#8221;
+if there is any initial indentation... and if necessary,
+it is easy to add.
 We&#8217;d like this reader to be a drop-in replacement for read(),
 so minimizing incompatibilities is important.</p>
 
 <p>There is a risk that this
-indentation will be accidental (e.g., a user might enter a blank line in
+indentation will be accidental (e.g., a user might enter an empty line in
 the middle of a routine and then start the next line indented).  However,
 this is less likely to happen interactively (users can typically see
 something happened immediately), and editors can easily detect and show
@@ -3177,6 +3228,15 @@ usually changes it to LF rather than U+0085.
 LS was Unicode&#8217;s attempt
 to kill CR/LF/CR+LF, which failed completely...&#8221;
 The same problem applies to PS, which is not used in practice.
+</p>
+
+<p>
+CR by itself is obsolescent.
+However, CR by itself has been used on many historical systems,
+so we expect there are older files which still use it.
+Lone CR is permitted by various Scheme specifications,
+and it is easy to implement too.
+Thus, we believe it is worth including in the specification.
 </p>
 
 <!--
@@ -3749,14 +3809,14 @@ is a single datum.
 
 <h3 id="collecting-lists">Collecting lists (&lt;* ... *&gt;)</h3>
 <p>
-Each sweet-expression is ended with a blank line, which is usually what you
+Each sweet-expression is ended with an empty line, which is usually what you
 want.  There is one circumstance where that behavior is awkward: a long
 sequence of definitions within an initial statement.
 We have developed a solution, collecting lists, that are also
 useful for 1-2 variable let-like statements.
 </p>
 <p>
-An accidental blank line between two internal definitions will end the initial
+An accidental empty line between two internal definitions will end the initial
 statement:
 </p>
 <pre>
@@ -3773,7 +3833,7 @@ define-library
     define rows(grid) vector-length(grid)
     define cols(grid) vector-length(vector-ref(grid 0))
 
-; above blank line prematurely ends define-library
+; above empty line prematurely ends define-library
     define ref(grid n m)
       and
         {-1 &lt; n &lt; rows(grid)}
@@ -3782,7 +3842,7 @@ define-library
     define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
 </pre>
 <p>
-You can work around this for short sequences by removing the blank lines or
+You can work around this for short sequences by removing the empty lines or
 replacing them with one of:
 </p>
 <ol>
@@ -3844,7 +3904,7 @@ Opening a parentheses intentionally disables indentation processing;
 this is what developers typically expect (note that both Python and
 SRFI-49 do this), and it also makes sweet-expressions very
 backwards-compatible with traditional s-expressions.
-Ending a definition at a blank line is very convenient for interactive use,
+Ending a definition at an empty line is very convenient for interactive use,
 and interactive and file notation should be identical
 (since people often switch between them).
 </p>
@@ -4626,7 +4686,7 @@ This proposal was initially quite attractive
 It is simpler to describe informally,
 and appears, at first glance,
 to replace many actual uses for
-GROUP/SPLIT, SUBLIST, and COLLECTINGLIST.
+GROUP/SPLIT, SUBLIST, and collecting lists.
 Thus, it was hoped that these three extensions
 could be removed with the simpler <code>:</code> marker rule.
 </p>
@@ -4704,20 +4764,35 @@ export
 </pre></td>
 </tr>
 </table>
+
 <p>
 But we expect that more typically,
 you want to express the code that looks like this:
 </p>
+
+<!-- The following examples use a different format and
+are changed slightly to fit on narrower displays. -->
+
 <table border="1" cellpadding="4">
-<tr><th>Arne&#8217;s formulation</th><th>sweet-expression</th></tr>
+<tr><th>Arne&#8217;s formulation</th></tr>
 <tr>
 <td><pre>
 begin
-  . (display "Welcome, ") (display player) (display ", to the Dungeons!") (newline)
+  . (display "Welcome, ") (display player) (display ", to Chicago!") (newline)
 </pre></td>
+</tr>
+</table>
+
+<p>
+This can be expressed, more cleanly, in sweet-expressions:
+</p>
+
+<table border="1" cellpadding="4">
+<tr><th>sweet-expression</th></tr>
+<tr>
 <td><pre>
 begin
-  display "Welcome, " \\ display player \\ display ", to the Dungeons!" \\ (newline)
+  display "Welcome, " \\ display player \\ display ", to Chicago!" \\ newline()
 </pre></td>
 </tr>
 </table>
@@ -4764,10 +4839,10 @@ define example-close(y)
 *&gt;; define-library
 </pre>
 <p>
-We could retain COLLECTINGLIST,
+We could retain collecting lists,
 and live without the SPLIT behavior,
 or even SUBLIST,
-though this would be important losses.
+though these would be important losses.
 Conversely, they could be re-added, but at
 that point, its simplicity has completely disappeared.
 But these ignore the biggest problem.
@@ -4797,22 +4872,17 @@ For another example, some East Asian characters,
 should be displayed on two columns
 even on a fixed-width font display.
 In Arne&#8217;s formulation,
-the width of non-whitespace characters
-is significant,
-since the <code>:</code> marker can record
-the column position
+the width of non-whitespace characters is significant,
+since the <code>:</code> marker can record the column position
 after non-whitespace characters occur.
-This SRFI, on the other hand,
-requires recording only the column position
+This SRFI, on the other hand, requires recording only the column position
 of horizontal whitespace characters;
-we handle the different possible widths
-of the TAB character
+we handle the different possible widths of the TAB character
 by requiring consistent indentation.
 </p>
 <p>
 Arne&#8217;s formulation requires either that implementations
-know all fullwidth characters
-(a much longer list
+know all fullwidth characters (a much longer list
 than the list of horizontal whitespace characters),
 or would leave handling of fullwidth characters
 up to implementations,
@@ -4871,7 +4941,10 @@ R6RS mandates that support.
 </p>
 
 <p>
-After discussion,
+You can learn more about this alternative approach at the
+<a href="http://draketo.de/light/english/wisp-lisp-indentation-preprocessor">wisp: Whitespace to Lisp</a>
+web page.
+After a long discussion,
 <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01097.html">this proposal was turned down
 by the authors of this SRFI</a>.
 </p>
@@ -5536,6 +5609,9 @@ Use a consistent amount of indenting for each level.
 We tend to use
 2 spaces for indentation; indentation nesting is more common in
 sweet-expressions, so 8-character indentations are often too much.
+Some people prefer to have a larger indent to line up with a parameter
+in certain cases (e.g., with &#8220;if&#8221;, put the condition after the if,
+and line up the branches with the condition).
 </p>
 
 <p>
@@ -5580,7 +5656,7 @@ for the reference implementation</a>.
 and &#8220;SRFI-105&#8221; mailing lists,
 including John Cowan, Shiro Kawai, Per Bothner, Mark H. Weaver,
 Beni Cherniavsky-Paskin, Arne Babenhauserheide, Ben Booth,
-David Vanderson,
+David Vanderson, Jos Koot,
 and many others whose names
 should be here but aren&#8217;t.</p>
 

@@ -661,9 +661,9 @@
          (#t (my-read-char port) (cons c (read-until-delim port delims))))))
 
   (define (read-error message)
-    (display "Error: ")
-    (display message)
-    (newline)
+    (display "Error: " (current-error-port))
+    (display message (current-error-port))
+    (newline (current-error-port))
     ; Guile extension, but many Schemes have exceptions
     (throw 'readable)
     '())
@@ -1474,10 +1474,17 @@
           (consume-end-of-line port)
           (collecting_tail port))
         ((char-ichar? c)
-          (let ((indentation (accumulate-ichar port)))
-            (if (is_initial_comment_eol (my-peek-char port))
-              (collecting_tail port)
-              (read-error "Collecting tail: Only ; or EOL after indent"))))
+          (let* ((indentation (accumulate-ichar port))
+                 (c (my-peek-char port)))
+            (cond
+              ((eqv? c #\;)
+                (collecting_tail port))
+              ((is_initial_comment_eol c)
+                (if (memv #\! indentation)
+                   (read-error "Collecting tail: False empty line with !")
+                   (collecting_tail port)))
+              (#t
+                (read-error "Collecting tail: Only ; after indent")))))
         ((or (eqv? c form-feed) (eqv? c vertical-tab))
           (consume-ff-vt port)
           (if (is_initial_comment_eol (my-peek-char port))
@@ -1751,19 +1758,19 @@
             (t_expr port))
           ((char-ichar? c)
             (let ((indentation-list (cons #\^ (accumulate-ichar port))))
-              (if (memv #\! indentation-list)
-                (read-error "Initial ident must not use '!'")
-                (if (not (memv (my-peek-char port) initial_comment_eol))
-                  (let ((results (n_expr_or_scomment port)))
-                    (if (eq? (car results) 'scomment)
-                      (begin
-                        (hspaces port)
-                        (t_expr port)) ; Consume scomment, try again.
-                      (cadr results))) ; Return one value.
-                  (begin ; Indented comment_eol, consume and try again.
-                    (consume-to-eol port)
-                    (consume-end-of-line port)
-                    (t_expr port))))))
+              (if (not (memv (my-peek-char port) initial_comment_eol))
+                (let ((results (n_expr_or_scomment port)))
+                  (if (not (eq? (car results) 'scomment))
+                    (cadr results) ; Normal n_expr, return one value.
+                    (begin ; We have an scomment; skip and try again.
+                      (hspaces port)
+                      (t_expr port))))
+                (begin ; Indented comment_eol, consume and try again.
+                  (if (memv #\! indentation-list)
+                    (read-error "Empty line with '!'"))
+                  (consume-to-eol port)
+                  (consume-end-of-line port)
+                  (t_expr port)))))
           (#t
             (let* ((results (it_expr port "^"))
                    (results_indent (car results))
