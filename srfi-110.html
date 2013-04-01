@@ -74,6 +74,7 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.5">2013/03/22</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.6">2013/03/28</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.7">2013/03/30</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.8">2013/04/01</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
 
@@ -485,14 +486,14 @@ processing if it&#8217;s inconvenient.
 Here are a few clarifications:
 </p>
 <ol>
-<li>An unescaped &#8220;;&#8221; not in a string (still) introduces comments
+<li>An unescaped &#8220;;&#8221; not in a string still introduces comments
 that end at the end of the line.</li>
 <li>Lines with only a ;-comment (preceded by 0 or more indent characters)
 are completely ignored - even their indentation (if any) is irrelevant.</li>
 <li>Scheme&#8217;s datum comments (<code>#;</code><i>datum</i>)
 comment out the next neoteric expression,
 not the next sweet expression
-(and please don't follow the semicolon with whitespace).
+(and please don&#8217;t follow the semicolon with whitespace).
 </li>
 <li>Special comments are non-whitespace sequences
 other than ;-comments that do not return a datum; they include
@@ -1048,11 +1049,11 @@ maps to <samp>(f&nbsp;{...})</samp>.
 
 <p>
 Markers are character sequences that have special meanings.
-A marker only has its special meaning when
+A marker <em>MUST</em> only have its special meaning when
 indentation processing is enabled,
 it is preceded by indentation or hspace,
 it is followed by an hspace or end-of-line,
-and it starts with the character shown
+and when it starts with the character shown
 (e.g., neither <tt>|$|</tt> nor <tt>'$</tt> contains a marker).
 The markers, BNF names, and meanings are:
 </p>
@@ -1100,30 +1101,6 @@ then the reader <em>SHOULD</em>
 treat those syntax-case abbreviations in the same manner.
 A sweet-expression reader <em>MAY</em> implement additional abbreviations.
 </p>
-
-<!--
-
-<p>&#8220;<dfn>Sweet-expressions</dfn>&#8221; (aka &#8220;<dfn>t-expressions</dfn>&#8221;) deduce parentheses from indentation.
-A sweet-expression reader <em>MUST</em> interpret its input
-as follows when indentation processing is active:
-</p>
-<ol>
-<li>An indented line is a parameter of its parent.</li>
-<li>Later terms on a line are parameters of the first term.</li>
-<li>A line with exactly one term, and no child lines, is simply that term; multiple terms are wrapped into a list.</li>
-<li>An empty line ends the expression; empty lines before expressions are ignored.</li>
-<li>Terms are neoteric-expressions as defined in
-<a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
-Thus <samp>{a&nbsp;+&nbsp;b}</samp> maps to <samp>(+&nbsp;a&nbsp;b)</samp>,
-<samp>f(...)</samp> maps to <samp>(f&nbsp;...)</samp>, and
-<samp>f{...}</samp> with non-empty content
-maps to <samp>(f&nbsp;{...})</samp>.</li>
-<li>When reading begins, indentation processing is active, but indentation processing is disabled inside ( ), [ ], and { }, whether they are prefixed or not
-(inside they&#8217;re a sequence of
-whitespace-separated neoteric-expressions).</li>
-</ol>
-
--->
 
 <p>
 An implication of these definitions is that a line with only
@@ -1368,143 +1345,6 @@ t_expr returns [Object v]
 </pre>
 
 
-
-<!--
-
-<p>
-
-<h2 id="old-basic-specification">Old Basic specification</h2>
-
-<p><i>This is the older version, eventually we're delete this
-if the new one is better</i></p>
-
-<p>&#8220;<dfn>Sweet-expressions</dfn>&#8221; (aka &#8220;<dfn>t-expressions</dfn>&#8221;) deduce parentheses from indentation.
-A sweet-expression reader <em>MUST</em> interpret its input
-as follows when indentation processing is active:
-</p>
-<ol>
-<li>An indented line is a parameter of its parent.</li>
-<li>Later terms on a line are parameters of the first term.</li>
-<li>A line with exactly one term, and no child lines, is simply that term; multiple terms are wrapped into a list.</li>
-<li>An empty line ends the expression; empty lines before expressions are ignored.</li>
-<li>Terms are neoteric-expressions as defined in
-<a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
-Thus <samp>{a&nbsp;+&nbsp;b}</samp> maps to <samp>(+&nbsp;a&nbsp;b)</samp>,
-<samp>f(...)</samp> maps to <samp>(f&nbsp;...)</samp>, and
-<samp>f{...}</samp> with non-empty content
-maps to <samp>(f&nbsp;{...})</samp>.</li>
-<li>When reading begins, indentation processing is active, but indentation processing is disabled inside ( ), [ ], and { }, whether they are prefixed or not
-(inside they&#8217;re a sequence of
-whitespace-separated neoteric-expressions).</li>
-</ol>
-
-<p>
-A sweet-expression reader <em>MUST</em> apply these rule clarifications:
-</p>
-<ol>
-<li>You can indent using one or more of the indent characters,
-which are space, tab, and exclamation point (!).
-Except for lines with initial indents and the first line of a stream,
-every line <em>MUST</em> be <dfn>consistently indented</dfn>
-when indentation processing is active.
-A line is consistently indented if
-the indent character sequence of that line, when compared to the
-indent character sequence of the preceding line,
-is equal or one is a prefix of the other.
-</li>
-<li>An unescaped &#8220;;&#8221; not in a string (still) introduces comments
-that end at the end of the line.</li>
-<li>Lines with only a ;-comment (preceded by 0 or more indent characters)
-are completely ignored - even their indentation (if any) is irrelevant.</li>
-<li>A line with only indentation is an empty line.</li>
-<li>An expression that starts indented enables &#8220;indented-compatibility&#8221; mode,
-where indentation is completely ignored.
-Instead, a sequence of white-space separated neoteric-expressions is read
-until the first end of line.</li>
-<li>Scheme&#8217;s <code>#;</code> datum comment comments
-out the next neoteric expression,
-not the next sweet expression.
-Datum comments ignore intervening whitespace, including spaces, tabs, and newlines.</li>
-<li>Block comments (<samp>#|</samp>...<samp>|#</samp>) are removed.</li>
-<li>For all <code>#</code>-based comments
-(i.e. datum comments <code>#;</code>,
-block comments <code>#|</code>...<code>|#</code>,
-the markers <code>#!fold-case</code> <code>#!no-fold-case</code> <code>#!sweet</code> <code>#!curly-infix</code>,
-and anything else an implementation can read
-but does not return a datum),
-if they
-begin immediately after the indent (if any),
-the indentation at the beginning of the comment is used.
-</li>
-<li>
-A sweet-expression reader <em>MUST</em> accept, as an
-an end-of-line (EOL) sequence, either
-a newline <i>or</i> a carriage return followed by newline.
-A sweet-expression reader <em>SHOULD</em> also accept
-a carriage return without a following newline as an end-of-line sequence.
-</li>
-<li>
-Portable non-empty files <em>MUST</em> end with an unescaped end-of-line
-sequence before the end-of-file.
-A sweet-expression reader <em>MAY</em> treat non-empty files that do
-not end in an unescaped
-end-of-line as though an end-of-line sequence had been added.
-</li>
-</ol>
-
-<p>
-A sweet-expression reader <em>MUST</em> implement these
-sweet-expression &#8220;advanced features&#8221;:
-<ol>
-<li>
-The marker <code>\\</code> is specially interpreted.
-If any terms precede it on the line, it is called SPLIT,
-and it <em>MUST</em> be interpreted
-as if it started a new line, at the current line&#8217;s indentation.
-If no terms precede <code>\\</code> on the line,
-it is called GROUP,
-and it represents no symbol at all,
-located at that indentation (GROUP is useful for lists of lists).</li>
-<li>
-The marker <code>$</code> (aka SUBLIST) <em>MUST</em> restart list processing.
-If <code>$</code> is preceded by any terms on the line,
-the right-hand-side (including its sub-blocks)
-is the last parameter of the left-hand side
-(of just that line).
-If there&#8217;s no left-hand-side,
-the right-hand-side is put in a list.
-</li>
-<li>
-A leading traditional abbreviation
-(quote, comma, backquote, or comma-at),
-located after indentation,
-and followed by space or tab,
-<em>MUST</em> be interpreted as that operator applied to the entire sweet-expression that follows.
-</li>
-<li>
-The markers &#8220;&lt;*&#8221; and &#8220;*&gt;&#8221; surround a
-<i>collecting list</i>, and <em>MUST</em> accept
-a list of 0 or more un-indented sweet-expressions.
-</li>
-<li>
-The marker &#8220;$$$&#8221; <em>MUST</em> be reserved for future use.
-</li>
-</ol>
-
-<p>
-The markers for the advanced sweet-expression features <em>MUST</em>
-only be accepted as such when indentation processing is active.
-A character sequence <em>MUST NOT</em> be considered one of those
-markers (or as the dot operator) if it
-does not begin with exactly the marker or operator&#8217;s first character.
-For example, <samp><tt>{$}</tt></samp>
-<em>MUST NOT</em> be interpreted as the SUBLIST marker; instead, it
-<em>MUST</em> be interpreted as the symbol <samp>$</samp>.
-</p>
-
--->
-
-
 <h2 id="other-requirements">Other requirements</h2>
 
 
@@ -1663,16 +1503,16 @@ traditional s-expression reader with support for some additional abbreviations.
 <pre>
 define fibfast(n)  ; Typical function notation
   if {n &lt; 2}       ; Indentation, infix {...}
-    n              ; Single expr = no new list
-    fibup n 2 1 0  ; Simple function calls
+     n             ; Single expr = no new list
+     fibup n 2 1 0 ; Simple function calls
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (define (fibfast n)
   (if (&lt; n 2)
-    n
-    (fibup n 2 1 0)))
+      n
+      (fibup n 2 1 0)))
 </pre>
 </td>
 </tr>
@@ -1682,16 +1522,16 @@ define fibfast(n)  ; Typical function notation
 <pre>
 define fibup(max count n-1 n-2)
   if {max = count}
-    {n-1 + n-2}
-    fibup max {count + 1} {n-1 + n-2} n-1
+     {n-1 + n-2}
+     fibup max {count + 1} {n-1 + n-2} n-1
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (define (fibup max count n-1 n-2)
   (if (= max count)
-    (+ n-1 n-2)
-    (fibup max (+ count 1) (+ n-1 n-2) n-1)))
+      (+ n-1 n-2)
+      (fibup max (+ count 1) (+ n-1 n-2) n-1)))
 </pre>
 </td>
 </tr>
@@ -1701,16 +1541,16 @@ define fibup(max count n-1 n-2)
 <pre>
 define factorial(n)
   if {n &lt;= 1}
-    1
-    {n * factorial{n - 1}}
+     1
+     {n * factorial{n - 1}}
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (define (factorial n)
   (if (&lt;= n 1)
-    1
-    (* n (factorial (- n 1)))))
+      1
+      (* n (factorial (- n 1)))))
 </pre>
 </td>
 </tr>
@@ -1721,16 +1561,16 @@ define factorial(n)
 <pre>
 define gcd(x y)
   if {y = 0}
-    x
-    gcd y rem(x y)
+     x
+     gcd y rem(x y)
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (define (gcd x y)
   (if (= y 0)
-    x
-    (gcd y (rem x y))))
+      x
+      (gcd y (rem x y))))
 </pre>
 </td>
 </tr>
@@ -3154,14 +2994,14 @@ where that item is itself several lines:
 <pre>
 (define (foo x)
   (if (not (foo-able? x))
-    (error "Cannot foo the " x)
-    (begin
-      (en-bar x)
-      ; quuxing is currently buggy
-      #;(quux
-        (barred-form x)
-        (co-barred-form x)
-        (de-xuuqed x)))))
+      (error "Cannot foo the " x)
+      (begin
+        (en-bar x)
+        ; quuxing is currently buggy
+        #;(quux
+          (barred-form x)
+          (co-barred-form x)
+          (de-xuuqed x)))))
 </pre>
 </li>
 </ol>
@@ -3182,14 +3022,14 @@ In sweet-expression form, using line comments suffices:
 <pre>
 define foo(x)
   if not(foo-able?(x))
-    error "Cannot foo the " x
-    begin
-      en-bar x
-      ; quuxing is currently buggy
-      ;;quux
-      ;;  barred-form x
-      ;;  co-barred-form x
-      ;;  de-xuuqed x
+     error "Cannot foo the " x
+     begin
+       en-bar x
+       ; quuxing is currently buggy
+       ;;quux
+       ;;  barred-form x
+       ;;  co-barred-form x
+       ;;  de-xuuqed x
 </pre>
 <p>
 Thus, the expected use case of datum comments
@@ -5653,10 +5493,17 @@ for the reference implementation</a>.
 <h1><a name="acknowledgments">Acknowledgments</a></h1>
 
 <p>We thank all the participants on the &#8220;readable-discuss&#8221;
-and &#8220;SRFI-105&#8221; mailing lists,
-including John Cowan, Shiro Kawai, Per Bothner, Mark H. Weaver,
-Beni Cherniavsky-Paskin, Arne Babenhauserheide, Ben Booth,
-David Vanderson, Jos Koot,
+and &#8220;SRFI-105&#8221; mailing lists, including
+<!-- Sort credits alphabetically by last name -->
+Arne Babenhauserheide,
+Ben Booth,
+Per Bothner,
+Beni Cherniavsky-Paskin,
+John Cowan,
+Shiro Kawai,
+Jos Koot,
+Mark H. Weaver,
+David Vanderson,
 and many others whose names
 should be here but aren&#8217;t.</p>
 
