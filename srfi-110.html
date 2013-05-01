@@ -76,6 +76,7 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.7">2013/03/30</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.8">2013/04/01</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.9">2013/04/17</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.10">2013/05/01</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
 
@@ -3500,11 +3501,14 @@ e.g., <samp>first(second(third(fourth)))</samp>,
 and based on Haskell experience,
 suggested being able to write them as
 <samp>first $ second $ third(fourth)</samp>.
-Again, the idea is that this is an abbreviation for a common-enough
-practice.</p>
+David A. Wheeler later found that, in the Quicklisp Common Lisp archives,
+there is an &#8220;infix dollar reader&#8221; by SUZUKI Shingo
+specifically to implement an infix &#8220;$&#8221; in Common Lisp.
+</p>
 
 <p>This is another example (like GROUP/SPLIT) of a
 construct that, when you need it, is incredibly useful.
+It is simply an abbreviation for very common practice.
 It&#8217;s not
 all that unusual to have a few processing or cleanup functions that
 take a single argument, and for all the &#8220;real work&#8221; to be nested
@@ -5237,17 +5241,26 @@ are common.
 </p>
 
 <p>
+Wisp, by itself, does not support infix operations such as {a&nbsp;+&nbsp;1},
+nor does it support neoteric expressions such as f(x)
+to abbreviate (f&nbsp;x).
+In theory these could be added to wisp, but they are not in its
+definition at the time of this writing.
+</p>
+
+<p>
 It should also be noted that, at the time of this writing,
 there is much less experience with wisp.
-No program has been written with wisp,
+No larger program has been written with wisp,
 and there is only one implementation of the wisp notation (in Python).
 In contrast, at least two programs
 have been written using sweet-expressions (sweeten and letterfall),
 and a large number of smaller expressions have been written
 for a variety of Lisp variants.
-Sweet-expressions have also been implemented at least three times
-(original implementation in Scheme, ANTLR implementation, and
-the reference SRFI implementation in Scheme).
+Sweet-expressions have also been implemented at least four times
+(original implementation in Scheme, ANTLR implementation,
+the reference SRFI implementation in Scheme, and a
+Common Lisp implementation loosely derived from the SRFI implementation).
 There is also no BNF of wisp notation at this time;
 in contrast, sweet-expressions has a BNF that has been automatically
 checked (by ANTLR).
