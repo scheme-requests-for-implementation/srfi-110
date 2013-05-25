@@ -1593,7 +1593,7 @@
           (get-next-indent port))
         ((lcomment-eol? c) ; Indent-only line
           (if (memv #\! indentation-as-list)
-              (read-error "Ending indentation-only line must not use '!'")
+              (get-next-indent port)
               "^"))
         (#t (list->string indentation-as-list)))))
 
@@ -1910,8 +1910,6 @@
                             (hspaces port)
                             (t-expr port))))
                     (begin ; Indented comment-eol, consume and try again.
-                      (if (memv #\! indentation-list)
-                          (read-error "Empty line with '!'"))
                       (consume-to-eol port)
                       (consume-end-of-line port)
                       (t-expr port)))))

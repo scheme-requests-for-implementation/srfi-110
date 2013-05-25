@@ -77,6 +77,7 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.8">2013/04/01</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.9">2013/04/17</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.10">2013/05/01</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.11">2013/05/24</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
 
@@ -104,18 +105,19 @@ Unlike nearly all past efforts to improve s-expression readability,
 sweet-expressions are
 general (the notation is independent from any underlying semantic)
 and homoiconic (the underlying data structure is clear from the syntax).
-Sweet-expressions can be used both for program and data input.
 This notation was developed by the
-&#8220;<a href="http://readable.sourceforge.net/">Readable Lisp S-expressions Project</a>&#8221;.
+&#8220;<a href="http://readable.sourceforge.net/">Readable Lisp S-expressions Project</a>&#8221; and
+can be used for both programs and data.
 </p>
 <p>
-Sweet-expressions can be considered simply
-a set of some additional abbreviations.
+Sweet-expressions can be considered
+a set of additional abbreviations, just as <tt>'x</tt> already abbreviates
+<tt>(quote&nbsp;x)</tt>.
 Sweet-expressions and traditionally formatted s-expressions
-can be freely mixed, allowing the developer
-to easily transition and maximize readability when laying out code.
+can be freely mixed; this provides backwards compatibility,
+simplifies transition, and enables developers to maximize readability.
 Here is an example of a sweet-expression and its equivalent s-expression
-(a sweet-expression reader would accept <i>either</i> format):
+(note that a sweet-expression reader would accept <i>either</i> format):
 </p>
 
 <table border="1" cellpadding="4">
@@ -335,7 +337,8 @@ reasonable indentation by others.
 Unfortunately, the Python syntax uses special constructs
 for the various semantic
 constructs of the language, and the syntaxes of file input and
-interactive input differ slightly.
+interactive input differ slightly (so cutting-and-pasting of code from
+a file may be interpreted differently by its REPL).
 </p>
 
 <p>
@@ -345,7 +348,8 @@ Unfortunately,
 <a href="#srfi-49">SRFI-49 had some awkward usage issues</a>,
 and by itself it lacks
 support for infix notation (e.g., <samp>{a&nbsp;+&nbsp;b}</samp>)
-and prefix formats (e.g., <samp>f(x)</samp>).
+and prefix formats (e.g., <samp>f(x)</samp>) that
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a> provides.
 Sweet-expressions build on and refine SRFI-49 by addressing these issues.
 Real programs by different authors have been written using sweet-expressions,
 demonstrating that sweet-expressions are a practical notation.
@@ -493,7 +497,8 @@ Here are a few clarifications:
 <li>An unescaped &#8220;;&#8221; not in a string still introduces comments
 that end at the end of the line.</li>
 <li>Lines with only a ;-comment (preceded by 0 or more indent characters)
-are completely ignored - even their indentation (if any) is irrelevant.</li>
+are completely ignored - their indentation (if any) is irrelevant,
+and they do not end an expression.</li>
 <li>Scheme&#8217;s datum comments (<code>#;</code><i>datum</i>)
 comment out the next neoteric expression,
 not the next sweet expression
@@ -501,11 +506,8 @@ not the next sweet expression
 </li>
 <li>Special comments are non-whitespace sequences
 other than ;-comments that do not return a datum; they include
-datum comments (<code>#;</code><i>datum</i>),
-block comments (<code>#|</code>...<code>|#</code>),
-and directives
-(such as <code>#!fold-case</code>, <code>#!no-fold-case</code>,
-<code>#!sweet</code>, and <code>#!curly-infix</code>).
+datum comments (<code>#;</code><i>datum</i>) and
+block comments (<code>#|</code>...<code>|#</code>).
 <a href="#block-comment-indent-significant">If a special comment
 begins immediately after the indent,
 the indentation of the special comment is used</a>.
@@ -716,11 +718,12 @@ The
 <a href="#sublist">marker <code>$</code> is called SUBLIST</a>.
 If <code>$</code> is preceded by any n-expressions on the line,
 the right-hand-side (including any child lines)
-is the last element of the list described on the left-hand side
-of just the line with the <code>$</code>.
+is the last element of the list described on that
+line&#8217;s left-hand side.
 (This was inspired by the similar Haskell operator.)
-If there&#8217;s no left-hand-side,
-the right-hand-side is put in a list.
+If there&#8217;s no text on the left-hand-side,
+it is interpreted as an empty list
+(so the right-hand-side is put in a list).
 Examples:
 </p>
 
@@ -751,6 +754,7 @@ a b $ c d e f $ g
 <td align="left" valign="top">
 <pre>
 (a b (c d e f g))
+; Not (a b (c d e f (g)))
 </pre>
 </td>
 </tr>
@@ -869,6 +873,13 @@ let &lt;* x getx() \\ y gety() *&gt;
 </tr>
 </table>
 </blockquote>
+
+<p>
+Note that if you want to use markers as ordinary symbols
+just surround them with curly braces.
+A <code>{$}</code> always means the symbol <code>$</code>, not the
+special marker.
+</p>
 
 <h2><a name="tutorial-implementation">Getting an implementation</a></h2>
 
@@ -1008,8 +1019,9 @@ value of the top of the indentation stack):
 <li>If an end-of-line sequence immediately follows the indentation
 and the indentation length is nonzero:
 <ol>
-<li type="a">If the indentation contains &#8220;!&#8221;, it is an error;
-an implementation <em>SHOULD</em> reject it.</li>
+<li type="a">If the indentation contains &#8220;!&#8221;, it is ignored;
+an implementation <em>MUST</em> consume the end-of-line sequence and
+start applying these rules again, from the beginning, with the next line.</li>
 <li type="a">If the indentation does not contain &#8220;!&#8221;,
 it is considered a line with no characters
 (thus indentation has zero length)
@@ -1254,7 +1266,7 @@ post_period returns [Object v]
 
 // Production "head" reads 1+ n-expressions on one line; it will
 // return the list of n-expressions on the line.  If there is one n-expression
-// on the line, it returns a list of exactly one item
+// on the line, it returns a list of exactly one item.
 
 head returns [Object v]
   : PERIOD /* Leading ".": escape following datum like an n-expression. */
@@ -1354,10 +1366,13 @@ t_expr returns [Object v]
 
 <p>
 An implementation of this SRFI <em>MUST</em> accept
-the directive <code>#!sweet</code> followed by a whitespace character
+a line beginning with the un-indented
+directive <code>#!sweet</code> followed by a newline
 in its standard datum readers (e.g., <code>read</code> and, if applicable,
 the default implementation REPL).
-This directive <em>MUST</em> be consumed and considered whitespace.
+An implementation <em>MAY</em> signal an error if this directive is not
+at the beginning of a line or cannot terminate all sweet-expressions
+(e.g., because it is inside parentheses or a collecting list).
 After reading this directive, the reader <em>MUST</em> accept
 sweet-expressions in subsequent datums read from the same port,
 until some other conflicting directive is given.
@@ -1373,6 +1388,9 @@ A <code>#!no-sweet</code>
 <em>SHOULD</em> cause the current port to
 disable sweet-expression indentation processing and
 <em>MAY</em> also disable curly-infix expression processing.
+An implementation <em>MAY</em> signal an error if the directives
+<code>#!curly-infix</code> or <code>#!no-sweet</code>
+are not at the beginning of a line or cannot terminate all sweet-expressions.
 </p>
 
 <p>
@@ -1406,7 +1424,8 @@ a datum reader <em>MAY</em> reject it.
 A reader <em>MAY</em> also accept a datum label
 that is an initial expression of a <i>head</i> production (see the BNF),
 with a trailing space or tab,
-as labeling the rest of the sweet-expression.
+as labeling the rest of the sweet-expression
+(the sample implementation does not).
 </p>
 
 <p>
@@ -1463,7 +1482,7 @@ Implementations that provide R7RS semantics
 <var>write-shared</var> that identifies shared structures,
 and <var>write-simple</var> with no guarantee of
 cycle detection or shared structure identification)
-<em>SHOULD</em> appropriate variants of these.
+<em>SHOULD</em> include appropriate variants of these.
 That is,
 <var>curly-write</var> and <var>neoteric-write</var>
 that perform cycle detection,
@@ -1779,7 +1798,7 @@ a |.| b {$} c d . .
 
 <tr>
 <!-- 
-; From http://docs.racket-lang.org/ts-guide/quick.html#%28part._.Using_.Typed_.Racket_from_the_.Racket_.R.E.P.L%29
+From http://docs.racket-lang.org/ts-guide/quick.html#%28part._.Using_.Typed_.Racket_from_the_.Racket_.R.E.P.L%29
 -->
 <td align="left" valign="top">
 <pre>
@@ -2149,17 +2168,17 @@ Homoiconic notations are extremely rare,
 and this property (homoiconicity) is an important reason that
 Lisps are still used decades after their development.
 Steele and Gabriel are absolutely right; there have been many efforts
-to create readable Lisp formats, and they all failed because they
-did not create formats that accurately represented the programs as
-data structures.
+to create readable Lisp formats, and they all failed (at least in part)
+because they did not create formats that accurately represented
+the programs as data structures.
 A key and distinguishing advantage of a Lisp-like language is that
 you can treat code as data, and data as code.
 Any notation that makes
 this difficult means that you lose many of Lisp&#8217;s unique advantages.
 Homoiconicity is critical if you&#8217;re going to treat a program as data.
-To do so, you must be able to easily &#8220;see&#8221;
-the program&#8217;s format.
-If you can, you can do amazing manipulations.
+To do so, you must be able to easily determine, from the input text,
+the program&#8217;s underlying structure.
+If you can easily determine this, you can do amazing manipulations.
 </p>
 <p>
 But what Gabriel and Steele failed to appreciate in their paper is that
@@ -2184,7 +2203,8 @@ interpretation, and serious bugs can hide there.
 Others who have used Lisp for years,
 such as <a href="http://www.paulgraham.com/arcll1.html">Paul Graham</a>,
 see s-expressions as long-winded, and advocate for the use of
-&#8220;abbreviations&#8221; that can map down to an underlying s-expression notation.
+&#8220;abbreviations&#8221; that can map down to an
+underlying s-expression notation.
 Sweet-expressions take this approach.
 </p>
 <h3 id="why-indent">Why should indentation be syntactically relevant?</h3>
@@ -2407,12 +2427,12 @@ look at the code available in the
 In these notations there is
 more than one way to present expressions, but
 this is not a change.
-Even with traditional s-expressions
+Even with traditional s-expressions,
 no Lisp guarantees that what it writes out is
 the same sequence of characters that was written.
 For example, <tt>(quote&nbsp;x)</tt>
 when read might be written back
-as <tt>'x</tt>, while on others, reading
+as <tt>'x</tt>, while on other implementations, reading
 <tt>'y</tt> might be printed as <tt>(quote&nbsp;y)</tt>.
 Similarly, if you enter <tt>(a&nbsp;.&nbsp;(b&nbsp;.&nbsp;()))</tt>,
 many Lisps will write that back as &#8220;(a&nbsp;b)&#8221;.
@@ -2611,7 +2631,13 @@ and comment handling, including why they are defined the way they are.
 
 <h3 id="empty-lines">Empty lines</h3>
 
-<p>In sweet-expressions, an empty line
+<p>
+The issues of how to deal with empty lines, and how to end expressions,
+involves various trade-offs between use in a REPL and use in a file.
+</p>
+
+<p>
+In sweet-expressions, an empty line
 always terminates a datum, once an expression has started;
 if (another) expression has not started, empty lines are ignored.
 That means that in a REPL,
@@ -2622,78 +2648,117 @@ rule eliminates a usability problem
 with the original SRFI-49 (I-expression) spec, in which two sequential
 empty lines before an expression surprisingly returned ().
 This was a serious usability problem.
-The sample
+The sample SRFI-49
 implementation <em>did</em> end expressions on an empty line - the problem
-was that the spec didn&#8217;t clearly capture this.</p>
+was that the spec didn&#8217;t clearly capture this.
+</p>
 
 <p>
-Allowing an empty line to end an expression
-represents a trade-off between REPL use and use in a file.
-In a file, a top-level expression could be determined simply by noting
+Various other altenatives for ending an expression were
+considered and discarded:
+</p>
+
+<ol>
+<li>
+A top-level expression could be determined simply by noting
 that the next expression began on the left column.
-But this would be hideous to use in a REPL, because it would mean
+This would work well in files.
+However, this would be hideous to use in a REPL, because it would mean
 that the results of an expression would only be evaluated after the
-first (and possibly only) line of the next expression was entered.
-(Early Pascal I/O implementations had similar problems.)
-</p>
-<p>
-One solution is to have a special text marker that means &#8220;done&#8221;
-(e.g., &#8220;.&#8221; on a line by itself), but this makes interactive use
-much less pleasant, since users then have to repeatedly
-type the special &#8220;end-of-expression&#8221; marker.
-As <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00916.html">
-Beni Cherniavsky-Paskin observed on the readable-discuss mailing list
-(2013-01-16)</a>,
-&#8220;I absolutely hate SQL prompts that don&#8217;t execute until I add a ;&#8221;.
-Another solution, already in sweet-expressions, is
-quickly executing one-line commands by
-typing an indent character first.
-But users will often not know exactly how long an expression
-will be until it is done, so this does not help enough.
-</p>
-<p>
-In contrast, pressing Enter twice is quite easy (since the user&#8217;s
-finger is already on Enter to press it the first time).
-Thus, the empty line rule is intentionally chosen to help interactive users,
-at a mild cost to non-interactive users (who then cannot use empty lines
-without ending the expression).
-</p>
-
-<p>It would be possible
+first (and possibly only) line of the <i>next</i> expression was entered.
+This is absurdly confusing and unacceptable.
+Early Pascal I/O had similar problems.
+</li>
+<li>It would be possible
 to have empty lines end an expression only in interactive use.
-In particular, Python does this, since it
+In particular, Python does this; Python
 has different rules for interactive use and files.
-However, this means that you couldn&#8217;t cut-and-paste files into
+However, this means that you cannot cut-and-paste text from files into
 the REPL interpreter and use them directly.
 David A. Wheeler
 believes it&#8217;s important to have exactly
 the same syntax in both cases in a Lisp-based system, because
 in Lisp-based systems, switching between
 the REPL and files is extremely common.
-By making &#8220;Enter Enter&#8221; <em>always</em> end an expression,
-the notation stays consistent.</p>
+</li>
+<li>
+A special text marker that means &#8220;done&#8221; could be used
+(e.g., &#8220;.&#8221; on a line by itself).
+However, users would often forget the end marker, making them less desirable
+in both REPL and file use.
+It would also make interactive use
+much less pleasant, since users then have to repeatedly
+type the special &#8220;end-of-expression&#8221; marker after each expression.
+As <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00916.html">
+Beni Cherniavsky-Paskin observed on the readable-discuss mailing list
+(2013-01-16)</a>,
+&#8220;I absolutely hate SQL prompts that don&#8217;t execute
+until I add a ;&#8221;.
+</li>
+<li>
+An expression could end at <i>two</i> blank lines instead of one.
+This would allow easy insertion of single blank lines.
+But it would be easy to make mistakes, since the difference of adding
+an extra blank line would be less obvious than adding one blank line,
+and it would require pressing Enter <i>three</i> times in typical REPL use
+(which would be less pleasant).
+It would also use up a lot of vertical real estate in a REPL, and vertical
+space is relatively precious.
+</li>
+<li>
+Another solution, already in sweet-expressions, is
+quickly executing one-line commands by
+typing an indent character first.
+But users will often not know exactly how long an expression
+will be until it is done, so this does not help enough.
+</li>
+</ol>
 
-<p>Of course, people sometimes want to have something like
-an empty line in the middle of an s-expression.
-The solution is that comment-only lines using &#8220;;&#8221;
-(indented or not) are completely ignored and not even considered empty lines.
-That means you can use comment-only lines for the purpose
+<p>
+The chosen solution, where an empty line
+(&#8220;Enter Enter&#8221;) <em>always</em> end an expression,
+works reasonably well and keeps the notation consistent.
+Pressing Enter twice is quite easy in a REPL (since the user&#8217;s
+finger is already on Enter to press it the first time).
+Of course, people sometimes want to have something like
+an empty line in the middle of an s-expression, to vertically separate
+parts of a larger expression.
+Sweet-expressions have alternatives that work quite well for this purpose:
+</p>
+<ol>
+<li>
+The recommended solution is to use comment-only lines using &#8220;;&#8221;
+(indented or not).
+These are completely ignored and not even considered empty lines.
+Thus, you can use comment-only lines for the purpose
 of separating sections in a single datum.
 The indentation of comment-only lines is intentionally ignored;
 that way, you don&#8217;t have to worry about
 making sure that comment indentation matches its surroundings.
 We&#8217;ve found that in practice this works very well.
+</li>
+<li>
+You can also use a line with at least one exclamation point, and nothing
+else other than possibly whitespace; this has the same effect.
+</li>
+<li>
+If you also want to disable indentation processing, placing the expression
+inside parentheses causes blank lines to be ignored.
+</li>
+<li>
 In very long expressions (e.g., for a set of definitions in a library),
 a collecting list can typically be used.
-</p>
+</li>
+</ol>
 
-<p>Since a line with only indentation may look exactly identical to an
+<p>Since a line with only spaces or tabs may look exactly identical to an
 empty line, we decided to clearly state that
-line with only spaces and tabs is an empty line.
+a line with only spaces and tabs is an empty line
+(and is treated the same way).
 This eliminates some nasty usability problems that
-could arise if a &#8220;empty&#8221; line was interpreted differently
-if it had some whitespace in it;
-a silent error like this could be hard to debug.</p>
+could arise if an &#8220;empty&#8221; line was interpreted differently
+depending on whether or not it had invisible whitespace in it.
+A silent error like this could be hard to debug.</p>
 
 <h3 id="trailing-hspace">Trailing horizontal spaces are ignored</h3>
 <p>
@@ -2705,13 +2770,25 @@ is ignored
 </p>
 
 <h3 id="indentation-characters">Indentation characters (! as indent)</h3>
-<p>Some
-like to use spaces to indent; others like tabs.  Python allows either,
-and SRFI-49 allows either as well - you just have to be consistent.
+<p>
+Some like to use spaces to indent; others like tabs.
+Python allows either, and SRFI-49 allows either as well.
 Sweet-expressions continues this tradition, and
 is defined so that people can use what they like.
-The only rule is that they must be consistent; if a line is indented with
-eight spaces, the next line cannot be indented with a tab.</p>
+The only rule is that in sweet-expressions
+users must be consistent; if a line is indented with
+eight spaces, the next line cannot be indented with a tab.
+</p>
+
+<p>
+One challenge with tabs is that systems vary how they are displayed.
+On some systems, a tab moves to the next 8th character position,
+but this is not universal.
+In sweet-expressions, tabs (as with any indentation characters)
+must be used consistently.
+This simple rule completely eliminates the problems caused by variances
+in how they are displayed.
+</p>
 
 <p>One objection that people raise about mandatory indentation
 is that horizontal whitespace can get lost in many transports
@@ -2746,6 +2823,82 @@ Eventually the &#8220;!&#8221; was selected instead; it
 practically never begins a line, and if you need it, {!...} will work.
 The exclamation point is much easier to implement as an indent character,
 and it is also a great character for highlighting indented groups.</p>
+
+
+<p>
+The rule for lines with only indentation, and at least one &#8220;!&#8221;,
+is due to much discussion.
+First, let&#8217;s review the rules for indentation-only lines in other cases.
+A line with ONLY spaces and tabs is considered to be the
+same as a blank line, for the straightforward reason that
+in many circumstances you can&#8217;t see the difference.
+Treating &#8220;no character&#8221; lines and &#8220;tabs+spaces only&#8221;
+lines differently could lead to subtle, hard-to-understand bugs.
+</p>
+
+<p>
+This then leads to the question, what would a line mean if it has only
+indentation characters and includes a &#8220;!&#8221; ?
+Originally it meant the same thing (&#8220;blank line&#8221;),
+because it was a line with only indent characters.
+However, that interpretation seemed odd, because you
+<i>can</i> see a difference compared to a line with no characters.
+That semantic was confusing, so Wheeler changed this to
+being illegal.
+</p>
+
+<p>
+On May 1, 2013, Beni Cherniavsky-Paskin
+questioned this semantic on the SRFI-110 discussion list, saying,
+&#8220;Once you prefix a block with !, it seems to me there is no reason to
+additionally require a comment ... to express
+ignored vertical whitespace.
+Isn&#8217;t this the cleanest thing possible:&#8221;
+<pre>
+  define long-func(x)
+  let ((foo bar(x)))
+  ! do stuff
+  ! ...
+  !
+  ! more stuff
+  ! ...
+</pre>
+</p>
+
+<p>
+On May 2, 2013, David Vanderson said he was for allowing &#8220;!&#8221;
+in an indentation-character-only line, but noted
+that there were good reasons to <i>not</i> enforce indentation matching.
+He gave this code example:
+</p>
+<pre>
+define long-func(x)
+let outer ((foo bar(x)))
+! let inner ((y z))
+! ! do stuff
+! ! ...
+!
+! ! more stuff
+! ! ...
+</pre>
+
+<p>
+David Vanderson then asked,
+&#8220;In this case, is &#8216;more stuff&#8217;
+a child of &#8216;inner&#8217; or &#8216;outer&#8217; ?
+Even in the first example, having a space after
+the ! on the blank line would throw off the indentation, right?
+I think I&#8217;ve convinced myself that indentation
+should NOT be enforced.&#8221;
+</p>
+<p>
+No one identified a hole in David Vanderson&#8217;s argument.
+As a result, lines with only indentation characters, and at least one
+&#8220;!&#8221;, are now completely ignored.
+</p>
+
+
+
 
 <h3 id="disabling-indentation-processing-with-paired-characters">Disabling
 indentation processing with paired characters</h3>
@@ -3305,6 +3458,17 @@ to similar markers, such as
 </p>
 
 <p>
+Implementations are only required to support these directives if
+they are at the beginning of a line and they can end a sweet-expression
+(e.g., they are not in the middle of a pair of parentheses or
+a collecting list).
+It is not hard to <i>parse</i> the directive (indeed, the BNF
+describes how to do so), but many implementations may have difficulty
+switching modes in the middle of processing a sweet-expression, and
+there is no strong reason to require this functionality.
+</p>
+
+<p>
 A list expression such as <code>(srfi&nbsp;110)</code>
 was intentionally <i>not</i> used.
 If this was used, a reader would not be able to easily
@@ -3377,7 +3541,8 @@ foo
 </pre>
 <p>
 David A. Wheeler created an early splicing proposal.
-After much discussion, to solve the latter problem, the SPLIT symbol was created, so that you could do:
+After much discussion, to solve the latter problem,
+the SPLIT symbol was created, so that you could do:
 </p>
 <pre>
 foo
@@ -3618,7 +3783,8 @@ define merge(&lt; as bs) $ cond
 <p>
 Without SUBLIST, the more complex branches of the <code>cond</code>
 would have to be formatted differently from the simpler branches
-(unless you are willing to waste a line to write just &#8220;<code>as</code>&#8221;),
+(unless you are willing to waste a line to write just
+&#8220;<code>as</code>&#8221;),
 or would be expressed in deeply-nested parentheses,
 defeating the purpose of using sweet-expressions.
 </p>
@@ -3787,7 +3953,8 @@ replacing them with one of:
 <li>a <code>;</code> comment (optionally indented) &mdash;
 the recommended approach</li>
 <li>a correctly-indented GROUP (<code>\\</code>) symbol</li>
-<li>a correctly-indented special comment (<code>#|...|#</code> or <code>#;...</code>)</li>
+<li>a correctly-indented special comment
+(<code>#|...|#</code> or <code>#;...</code>)</li>
 </ol>
 <p>
 For longer sequences (say, much longer than a screen),
@@ -4245,7 +4412,8 @@ s-expression. Here is a brief additional comparison:</p>
 </li>
 <li>Both have &#8220;juxtaposition for function application&#8221;</li>
 <li>Q2 has
-&#8220;Naming a zero-argument function applies it&#8221; but this is awkward, indeed,
+&#8220;Naming a zero-argument function applies it&#8221;
+but this is awkward, indeed,
 &#8220;The exact rule for a distinguishing between a variable reference
 and a zero-argument function application isn&#8217;t decided yet.&#8221; In
 sweet-expressions, a zero-argument function name is called by adding
@@ -4259,7 +4427,8 @@ expressions yield multiple values&#8221; - In sweet-expressions, you use
 usual Scheme procedures, including value, instead of having special
 syntax.</li>
 <li>REPL: In sweet-expressions, you usually end a line
-with ENTER ENTER. Q2 doesn&#8217;t, but Wheeler worries that you have to be careful
+with ENTER ENTER. Q2 doesn&#8217;t, but Wheeler worries
+that you have to be careful
 or it&#8217;ll end where it syntactically might not need to.</li>
 </ul>
 
@@ -4350,7 +4519,8 @@ and that indentation can help do so.
 <p>
 The
 <a href="http://chrisdone.com/z/">
-&#8220;Z&#8221; language by Chris Done (not related to the Z specification language)</a>
+&#8220;Z&#8221; language by Chris Done
+(not related to the Z specification language)</a>
 has been
 <a href="http://www.reddit.com/r/programming/comments/15r6tb/z_a_tiny_strict_impure_dynamically_typed_curried/">
 discussed on Reddit</a>,
@@ -4431,7 +4601,7 @@ Alpha (Beta Charlie) (Delta)
 </pre>
 <p>
 &#8220;Sub-expressions made using parentheses must remain within a single line,
-they are not permitted to wrap. Indented lines are deemed to be
+they are not [normally] permitted to wrap. Indented lines are deemed to be
 sub-expressions of the superior, less indented, lines above. The above
 expression can be written in indented form as follows:&#8221;
 </p>
@@ -4444,14 +4614,15 @@ Delta
 Thus, it is similar to the main rule of t-expressions, except that
 <a href="http://code.google.com/p/genyris/">Genyris</a> wraps
 &#8220;ALL sublines in lists, even if they consist of a single element.&#8221;
-As
-Beni Cherniavsky-Paskin notes,
+As Beni Cherniavsky-Paskin notes,
 &#8220;It can get away with that simpler rule because all data objects are
 callable and eval to [themselves]...
 In fact it&#8217;s much cleverer, though that&#8217;s irrelevant for us.
-All objects are actually macros (&#8220;lazy functions&#8221; in the manual&#8217;s
-terminology). What objects do if called with arguments - e.g. (&#8220;foo&#8221; arg1
-arg2) - is evaluate those arguments in a dynamic-binding env enriched by
+All objects are actually macros
+(&#8220;lazy functions&#8221; in the manual&#8217;s
+terminology). What objects do if called with arguments - e.g.
+(&#8220;foo&#8221; arg1 arg2) -
+is evaluate those arguments in a dynamic-binding env enriched by
 the object&#8217;s methods, and return the last value.
 Dynamic scope only affects names starting with a dot, other names use
 lexical scoping.
@@ -4462,9 +4633,67 @@ All this forms a clever implementation of method calling:
 "banana"
 </pre>
 <p>
-While interesting, this notation is less useful for general-purpose
-s-expressions, in particular, it makes it more
-difficult to notate simple atoms.
+On 2013-05-23 Bill Birch (the creator of genyris)
+posted on the SRFI-110 mailing list, clarifying some points.
+He said:
+</p>
+<blockquote>
+<p>
+&#8220;I have made some syntactic decisions which I regard as restricting
+programmers to write in a better style. For example not allowing lists to
+wrap encourages... smaller functions.  That&#8217;s OK for source code, however
+when loading data files one should not restrict the structure.
+One difficulty with a syntax that defaults to lists is that
+something special needs to be done for atoms.
+</p>
+<p>
+[For]
+example (a b c (d e f) xx) is problematic since xx is subordinate but is
+not a list.
+So in Genyris I was forced to add a leading &#8216;continuation&#8217;
+character ~. Which gives me:
+</p>
+<pre>
+  quote
+:   a b c
+:      d e f
+:      ~xx
+:
+</pre>
+<p>
+(a b c (d e f) xx) # PairSource
+</p>
+<p>
+There is another (obvious) way to wrap lists in Genyris just place
+a = at the end of the line.  [For] example:
+</p>
+<pre>
+  list 1 2 3 4 5 =
+:    6 7 8
+:
+</pre>
+<p>
+(1 2 3 4 5 6 7 8) # Pair
+</p>
+<p>
+In practice I don&#8217;t often use line continuation in code.
+</p>
+</blockquote>
+<p>
+David A. Wheeler believes the genyris notation is interesting
+but is less readable for general-purpose s-expressions.
+In particular, this approach makes it more
+difficult (and less readable) to notate simple atoms,
+which are very common in typical Lisp code.
+This may be less important in genyris, which is a significantly different
+language.
+Indeed, the author of genyris stated,
+&#8220;if you use indented syntax expect the language itself to change!&#8221;.
+But while the genyris notation may work well for the genyris system,
+David A. Wheeler believes a different notation would be
+better-suited for other cases.
+The genyris approach does (again) demonstrate that there is interest in using
+syntactically-relevant indentation in a Lisp-like language.
 </p>
 
 <h3 id="arne">Comparison to the &#8220;Initial Arne formulation&#8221;</h3>
@@ -4897,10 +5126,23 @@ You can learn more about wisp at the
 </p>
 
 <p>
+The key distinguishing factor between wisp and sweet-expressions
+is a difference of emphasis.
+The design of wisp focuses on having a simple <i>definition</i> as the most
+important factor.
+The design of sweet-expressions focuses on having simpler and clearer
+<i>code</i> that <i>uses</i> the notation
+(having &#8220;readable&#8221; code), even for large code sizes,
+at the cost of having have a slightly more complex definition.
+Below is a more detailed discussion of these differences.
+</p>
+
+<p>
 As with the <a href="#arne">initial approach</a>,
 wisp includes indentation-means-subitem (as is true for sweet-expressions).
 Like the initial approach but unlike sweet-expressions,
-every line is a new list unless prefixed with &#8220;.&#8221; after the indentation,
+every line is a new list unless prefixed
+with &#8220;.&#8221; after the indentation,
 and blank lines do not terminate the expression.
 </p>
 
@@ -5159,14 +5401,15 @@ Many procedures involve case/cond statements that break a problem into
 components, eventually leading to simple base cases.
 These base cases are often simple expressions (e.g., a number, the empty list,
 and so on) that are <i>not</i> in a list.
-Lists with single elements occur, e.g., &#8220;(newline)&#8221;, but they are less common.
+Lists with single elements occur, e.g., &#8220;(newline)&#8221;,
+but they are less common.
 Wheeler believes we should optimize for the more common case.
 </li>
 <li>
 <i>It is more familiar to Lisp developers</i>.
 A &#8220;.&#8221; in a list traditionally means that the following item
 is the cdr of a list, potentially creating an improper list.
-In the wist approach, it may also indicate a normal list element,
+In the wisp approach, it may also indicate a normal list element,
 which is potentially confusing. You may even have sequences of lines
 leading with &#8220;.&#8221;, with a completely different meaning from
 traditional Lisp.
@@ -5199,6 +5442,14 @@ Because it looks less familiar, developers are more likely to
 write the wrong code and miss errors with the wisp formulation.
 This is especially because &#8220;.&#8221; has another meaning
 (it sets the cdr of a list).
+Even Arne, developer of wisp, agreed on 2013-05-05 on the SRFI-110
+mailing list that
+having to prefix singletons with &#8220;.&#8221; (as wisp requires) is
+&#8220;a trap: It&#8217;s easy to forget the . for a return value...
+Not adding brackets for a single item also has the advantage,
+that you can copy-paste lisp-code into readable.
+If you do the same in wisp, you have to prepend every
+top-level bracket with a dot. 
 Also, a &#8220;.&#8221; in front of an integer looks
 very much like a floating point number with initial period, again
 inviting error.
@@ -5413,7 +5664,8 @@ Otherwise, emit SAME.
 </ol>
 </li>
 <li>
-Otherwise, the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+Otherwise, the <code>indentation-stack</code>&#8217;s
+topmost non-<code>?</code> item
 is greater than <code>current-indentation</code>:
 <ol>
 <li>
@@ -5740,8 +5992,9 @@ now slipping into the &#8216;notation is tied to underlying semantic&#8217; bug.
 Or in this case, &#8216;notation is tied to underlying legacy syntax&#8217;.
 I&#8217;d rather have the full Beni formulation of SUBLIST or the classic
 0.4 formulation, in that preference order.
-I&#8217;ll admit that I don&#8217;t have a use for the full Beni formulation other
-than for let, though.  I suspect there may be further use cases; but I
+I&#8217;ll admit that I don&#8217;t have a use for the
+full Beni formulation other than for let, though.
+I suspect there may be further use cases; but I
 haven&#8217;t found any others yet.&#8221;
 </p>
 <p>
@@ -5830,11 +6083,22 @@ Readable project style guide</a>.
 <h3>General Guidance</h3>
 
 <p>
-Mentally, this is pretty straightforward - on each line, write an expression; everything after the first term on the line, or all child lines, are parameters of the first term. You can use grouping operators ( ), [ ], and { } to put subexpressions on the same line, if you want. Use -( ... ) to negate something.
+Mentally, this is pretty straightforward - on each line, write an
+expression; everything after the first term on the line, or all child
+lines, are parameters of the first term.
+You can use grouping operators (), [ ], and { } to put
+subexpressions on the same line, if you want.
+Use -( ... ) to negate something.
 </p>
 
 <p>
-Whenever you have an infix expression, just surround it with {...}. You can use the form f(...) to call a function; if it has zero parameters, express it as f(), and if it has more than one parameter, separate the parameters with spaces. The f(...) form is especially handy for creating short expressions as a parameter on a line; for long expressions, use indentation instead.
+Whenever you have an infix expression, just surround it with {...}.
+You can use the form f(...) to call a function; if it has zero parameters,
+express it as f(), and if it has more than one parameter, separate the
+parameters with spaces.
+The f(...) form is especially handy for creating
+short expressions as a parameter on a line;
+for long expressions, use indentation instead.
 </p>
 
 <h3>Use infix notation</h3>
@@ -5864,8 +6128,10 @@ if you&#8217;re using a functional programming style.
 <p>
 In general, use indentation to make it easy to see the larger-scale
 structure of a program or data. Typically major structural atoms should
-start a new line, including defining a new term (e.g., &#8220;define&#8221; and
-&#8220;let&#8221;), conditionals (e.g., &#8220;if&#8221; and &#8220;cond&#8221;), and loops (e.g., &#8220;loop&#8221;).
+start a new line, including defining a new term
+(e.g., &#8220;define&#8221; and &#8220;let&#8221;),
+conditionals (e.g., &#8220;if&#8221; and &#8220;cond&#8221;),
+and loops (e.g., &#8220;loop&#8221;).
 </p>
 
 <h3>Use function call notation for parameters if they fit in a line</h3>
@@ -5876,7 +6142,8 @@ you use function notation like f(x y(z)), then put them all on a line.
 When you&#8217;re calling a function with no parameters, use function-calling
 format with &#8220;()&#8221; at the end, e.g., &#8220;f()&#8221;.
 In general, indentation is used for the major &#8220;structural&#8221; elements
-of a program, and function calls get used once you&#8217;re &#8220;near the leaf&#8221;
+of a program, and function calls get used once you&#8217;re
+&#8220;near the leaf&#8221;
 of structure (where you won&#8217;t go beyond the end of the line).
 </p>
 
