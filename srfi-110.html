@@ -78,8 +78,10 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.9">2013/04/17</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.10">2013/05/01</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.11">2013/05/24</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.12">2013/07/29</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
+
 
 <p>
 This SRFI contains all the required sections, including
@@ -158,6 +160,7 @@ define fibfast(n)   ; Typical function notation
 <li><a href="#specification">Specification</a>
   <ul>
   <li><a href="#bnf-conventions">BNF conventions</a></li>
+  <li><a href="#bnf-utility">Utility procedures used in the BNF</a></li>
   <li><a href="#bnf-supporting">Supporting BNF definitions</a></li>
   <li><a href="#bnf-key">Key BNF productions</a></li>
   <li><a href="#other-requirements">Other requirements</a></li>
@@ -170,7 +173,7 @@ define fibfast(n)   ; Typical function notation
   <ul>
   <li><a href="#general-and-homoiconic">General and homoiconic formats</a></li>
   <li><a href="#cant-improve">Is it impossible to improve on s-expression notation?</a></li>
-  <li><a href="#why-indent">Why should indentation be syntactically relevant?</a></li>
+  <li><a href="#why-indent">Why should indentation be syntactically meaningful?</a></li>
   <li><a href="#srfi-49">What is the relationship between sweet-expressions and SRFI-49 (I-expressions)?</a></li>
   <li><a href="#separate-105">Why are sweet-expression separate from curly-infix and neoteric-expressions as defined in SRFI-105?</a></li>
   <li><a href="#writing-out-results">Writing out results</a></li>
@@ -201,8 +204,10 @@ define fibfast(n)   ; Typical function notation
   <li><a href="#traditional-abbreviations">Traditional abbreviations</a></li>
   <li><a href="#sublist">Sublist ($)</a></li>
   <li><a href="#single-item-sublist">Why is <code>a $ b</code> equivalent to <code>(a b)</code> rather than <code>(a (b))</code>?</a></li>
+  <li><a href="#why-specific-symbols">Why specifically use <code>$</code> for SUBLIST, and <code>\\</code> for the two behaviors GROUP and SPLIT?</a></li>
   <li><a href="#collecting-lists">Collecting lists (&lt;* ... *&gt;)</a></li>
   <li><a href="#reserved">Reserved marker ($$$)</a></li>
+  <li><a href="#line-continuation">Line Continuation</a></li>
   </ul>
   </li>
   <li><a href="#comparisons">Comparisons to other notations</a>
@@ -499,11 +504,6 @@ that end at the end of the line.</li>
 <li>Lines with only a ;-comment (preceded by 0 or more indent characters)
 are completely ignored - their indentation (if any) is irrelevant,
 and they do not end an expression.</li>
-<li>Scheme&#8217;s datum comments (<code>#;</code><i>datum</i>)
-comment out the next neoteric expression,
-not the next sweet expression
-(and please don&#8217;t follow the semicolon with whitespace).
-</li>
 <li>Special comments are non-whitespace sequences
 other than ;-comments that do not return a datum; they include
 datum comments (<code>#;</code><i>datum</i>) and
@@ -512,8 +512,21 @@ block comments (<code>#|</code>...<code>|#</code>).
 begins immediately after the indent,
 the indentation of the special comment is used</a>.
 </li>
+<li>The datum comment marker (<code>#;</code>)
+at the beginning of a line, followed by whitespace,
+comments out the next <i>sweet-expression</i>;
+otherwise it comments out the next <i>neoteric-expression</i>.
+</li>
 <li>
 A single delimited period (.) still sets the value of the cdr field of a pair.
+If the period is not the first datum on the line, the next datum on the
+line is the cdr value.
+If the period is the only datum on the line, then the next (sibling) line
+is the cdr value.
+A period at the beginning of a line, with one datum after it,
+escapes that datum (just like neoteric-expressions do);
+a period at the end of a line, with at least one datum before it,
+is considered the same as |.|.
 </li>
 <li>An expression that
 <a href="#disabling-indentation-processing-with-an-initial-indent">starts
@@ -558,6 +571,8 @@ ff ; Demo special comments
   t3 t4
     t5 #| xyz |# t6
     t7 #;t8(q) t9
+  #; this is
+     all ignored
 </pre>
 </td>
 <td align="left" valign="top">
@@ -748,13 +763,24 @@ a b $ c d
 <tr>
 <td align="left" valign="top">
 <pre>
-a b $ c d e f $ g
+e f $ g
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
-(a b (c d e f g))
-; Not (a b (c d e f (g)))
+(e f g) ; Not (e f (g))
+</pre>
+</td>
+</tr>
+<tr>
+<td align="left" valign="top">
+<pre>
+a b $ c d e $ f g
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(a b (c d e (f g)))
 </pre>
 </td>
 </tr>
@@ -932,6 +958,7 @@ document are to be interpreted as described in
 The following subsections provide the
 <a href="#bnf-conventions">Backus-Naur Form (BNF) conventions</a>,
 <a href="#bnf-supporting">supporting definitions in BNF format</a>,
+<a href="#bnf-utility">utility procedures used in the BNF</a>,
 <a href="#bnf-key">key productions in BNF format</a>,
 <a href="#other-requirements">other requirements</a>,
 and specifications about
@@ -960,8 +987,9 @@ You can also separately view the
 <a href="sweet.g">full ANTLR BNF definition of sweet-expressions
 with Java action rules</a>, along with a support Java class
 <a href="Pair.java">Pair.java</a>.
-The non-terminal <code>same</code> emphasizes where there is a new
-line with unchanged indentation; it matches nothing.
+The non-terminal <code>same</code> is an empty sequence;
+it acts as a comment to emphasize where there is a new
+line with unchanged indentation.
 The non-terminal <code>error</code> emphasizes certain sequences that
 are not defined by this BNF
 (an implementation <em>MAY</em> implement an extension, but if it does
@@ -982,18 +1010,20 @@ any unescaped pairs of parentheses, brackets, or curly braces.
 To further understand sweet-expressions, we first need these definitions:
 </p>
 <ul>
-<li>eol character: A character that is a carriage return
-(U+000D) or linefeed (U+000A)
-(eol is short for &#8220;end of line&#8221;).</li>
-<li>eol sequence: A carriage return (U+000D)
-optionally followed by linefeed (U+000A), or a linefeed (U+000A)
-This is EOL_SEQUENCE in the BNF.
+<li>eol character: A carriage return (U+000D) or linefeed (U+000A).
 Implementations <em>MAY</em>
-also recognize other end of line characters or sequences.</li>
-<li>line: A sequence of non-eol characters terminated by an eol sequence.
+add implementation-defined eol characters.</li>
+<li>EOL (&#8220;end of line&#8221;):
+A carriage return (U+000D)
+optionally followed by linefeed (U+000A), or alternatively,
+a linefeed (U+000A).
+Implementations <em>MAY</em> accept
+other implementation-defined sequences.</li>
+<li>line: A sequence of 0+ non-eol characters terminated by EOL.
 A sweet-expression reader <em>MAY</em> also support a final line without
 an eol sequence.
-The line terminator is not considered part of the line contents.</li>
+The character(s) in a terminating EOL
+are not considered part of the line contents.</li>
 <li>hspace: A character that is a space (U+0020) or tab (U+0009)
 (short for &#8220;horizontal space&#8221;).</li>
 <li>indent character: A character that is a space (U+0020), tab (U+0009), or
@@ -1010,8 +1040,8 @@ First, when the sweet-expression reader begins,
 a stack called the &#8220;indentation stack&#8221;
 is initialized to contain exactly one value, the empty string
 (<tt>""</tt>).
-Then, when a line is read and the current mode is not enclosed,
-the line indentation is removed and possibly replaced by other generated
+Then, when the current mode is <i>not</i> enclosed, the line indentation
+(if any) is read, removed, and possibly replaced by other generated
 symbols as follows (where &#8220;top&#8221; is the
 value of the top of the indentation stack):
 </p>
@@ -1038,8 +1068,10 @@ the mode changes back to indentation processing.
 &#8220;;&#8221; immediately follows the indentation, the line is skipped
 &mdash; with the indentation completely ignored &mdash;
 and the following line is examined instead.</li>
-<li>If the indentation is equal to top, no extra symbol is generated
-(this is called &#8220;same&#8221;).</li>
+<li>If the indentation is equal to top, no extra symbol is generated.
+The BNF identifies where this will match using the
+&#8220;same&#8221; non-terminal, but
+&#8220;same&#8221; is empty.</li>
 <li>If the indentation is longer than top, and top is a prefix of indentation,
 the indentation is pushed onto the indentation stack
 and the symbol <code>INDENT</code> is generated.</li>
@@ -1096,16 +1128,20 @@ that it has priority; ",@" is interpreted differently from
 -->
 
 <p>
-The <i>traditional abbreviations</i> are
-&#8220;<tt>'</tt>&#8221;, &#8220;<tt>`</tt>&#8221;,
-&#8220;<tt>,@</tt>&#8221;, and &#8220;<tt>,</tt>&#8221;,
-which stand for
-quote, quasiquote, unquote-splicing, and unquote respectively.
-In indentation processing mode, a traditional abbreviation
-followed by space, tab, or end-of-line is represented as
-APOSW, QUASIQUOTEW, UNQUOTE_SPLICEW, and UNQUOTEW respectively.
-An end-of-line (if any) immediately after these
-abbreviations <em>MUST</em> also generate EOL.
+The following whitespace-terminated terminals <em>MUST</em> be
+recognized if and only if the reader is in indentation processing mode;
+the linefeed or carriage return (if any) in them <em>MUST NOT</em>
+be permanently consumed:
+</p>
+<pre>
+QUOTEW          : '\'' (' ' | '\t' | '\n' | '\r') ;  // quote
+QUASIQUOTEW     : '\`' (' ' | '\t' | '\n' | '\r') ;  // quasiquote
+UNQUOTE_SPLICEW : ',@' (' ' | '\t' | '\n' | '\r') ;  // unquote-splicing
+UNQUOTEW        : ','  (' ' | '\t' | '\n' | '\r') ;  // unquote
+DATUM_COMMENTW  : '#;' (' ' | '\t' | '\n' | '\r') ;  // start datum comment
+</pre>
+
+<p>
 The <i>syntax-case related abbreviations</i> are
 &#8220;<tt>#'</tt>&#8221;, &#8220;<tt>#`</tt>&#8221;,
 &#8220;<tt>#,</tt>&#8221;, and &#8220;<tt>#,@</tt>&#8221;,
@@ -1114,7 +1150,8 @@ syntax, quasisyntax, unsyntax-splicing, and unsyntax respectively.
 If a Scheme system supports both this SRFI
 and the syntax-case related abbreviations,
 then the reader <em>SHOULD</em>
-treat those syntax-case abbreviations in the same manner.
+treat those syntax-case abbreviations when whitespace-terminated
+in the same manner.
 A sweet-expression reader <em>MAY</em> implement additional abbreviations.
 </p>
 
@@ -1125,20 +1162,63 @@ a sweet-expression once it has begun in the normal case,
 per the it_expr production defined below.
 </p>
 
+<h2><a name="bnf-utility">Utility procedures used in the BNF</a></h2>
+
 <p>
-The BNF depends on this utility function (this enables lines with a
+The BNF depends on the following utility procedures.
+The first ones are variants of traditional list processing procedures
+but also handle a special unique &#8220;empty_tag&#8221; value,
+which is used to indicate when no value at all is returned.
+The &#8220;monify&#8221; procedure enables lines with a
 single n-expression and no child lines to represent themselves and
-not be wrapped into a list):
+not be wrapped into a list:
 </p>
 <pre>
-; If x is a 1-element list, return (car x), else return x
-(define (monify x)
-  (cond
-    ((not (pair? x)) x)
-    ((null? (cdr x)) (car x))
-    (#t              x)))
+  (define (isemptytagp x) (eq? x empty_tag))
+
+  (define (not_period_and_not_empty x)
+    (and (not (isperiodp x)) (not (isemptytagp x))))
+
+  (define (conse x y) ; cons, but handle "empty" values
+    (cond
+      ((eq? y empty-tag) x)
+      ((eq? x empty-tag) y)
+      (#t (cons x y))))
+
+  (define (appende x y) ; append, but handle "empty" values
+    (cond
+      ((eq? y empty-tag) x)
+      ((eq? x empty-tag) y)
+      (#t (append y))))
+
+  (define (list1e x) ; list, but handle "empty" values
+    (if (eq? x empty-tag)
+        '()
+        (list x)))
+
+  (define (list2e x y) ; list, but handle "empty" values
+    (if (eq? x empty-tag)
+        y
+        (if (eq? y empty-tag)
+           x
+           (list x y))))
+
+  ; If x is a 1-element list, return (car x), else return x
+  (define (monify x)
+    (cond
+      ((not (pair? x)) x)
+      ((null? (cdr x)) (car x))
+      (#t              x)))
 </pre>
 
+<p>
+The BNF body production uses an isperiodp(x) function,
+which returns true iff x is the datum &#8220;.&#8221; and begins
+with a period.
+This is used so that &#8220;a . b&#8221; is recognized as the pair (a . b),
+while &#8220;a&nbsp;|.|&nbsp;b&#8221; is the
+3-element list &#8220;(a&nbsp;|.|&nbsp;b)&#8221;.
+</p>
 
 <h2><a name="bnf-supporting">Supporting BNF definitions</a></h2>
 
@@ -1152,8 +1232,8 @@ SPACE    : ' ';
 TAB      : '\t';
 PERIOD   : '.';
 
-// Abbreviations not followed by horizontal space/EOL are ordinary:
-APOS           : '\'';
+// Abbreviations not followed by horizontal space or EOL are ordinary:
+QUOTE          : '\'';
 QUASIQUOTE     : '\`';
 UNQUOTE_SPLICE : ',@';
 UNQUOTE        : ',';
@@ -1162,17 +1242,16 @@ UNQUOTE        : ',';
 fragment EOL_CHAR : '\n' | '\r' ;
 fragment NOT_EOL_CHAR : (~ (EOL_CHAR));
 fragment NOT_EOL_CHARS : NOT_EOL_CHAR*;
-fragment EOL_SEQUENCE : ('\r' '\n'? | '\n');
 
 // Comments. LCOMMENT=line comment, scomment=special comment.
 LCOMMENT :       ';' NOT_EOL_CHARS ; // Line comment - doesn't include EOL
-BLOCK_COMMENT : '#|' // This is #| ... #|
+BLOCK_COMMENT : '#|' // This is #|...|#
       (options {greedy=false;} : (BLOCK_COMMENT | .))* '|#' ;
-DATUM_COMMENT_START : '#;' ;
+DATUM_COMMENT : '#;' ;
 // SRFI-105 notes that "implementations could trivially support
 // (simultaneously) markers beginning with #! followed by a letter
 // (such as the one to identify support for curly-infix-expressions),
-// the SRFI-22 #! space marker as an ignored line, and the
+// the SRFI-22 #!+space marker as an ignored line, and the
 // format #!/ ... !# and #!. ... !# as a multi-line comment."
 // We'll implement that approach for maximum flexibility.
 SRFI_22_COMMENT : '#! ' NOT_EOL_CHARS ;
@@ -1185,6 +1264,7 @@ SHARP_BANG_DIRECTIVE : '#!' (('a'..'z'|'A'..'Z'|'_')
                     ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')*)? (SPACE|TAB)* ;
 
 hspace  : SPACE | TAB ;        // horizontal space
+hs      : hspace* ;
 
 // This is for handling non-first n-expressions in initial indent.
 // An implementation MAY implement this as "(hspace | '!')+"
@@ -1193,20 +1273,20 @@ hspaces_maybe_bang: hspace+ ;
 
 // Production "abbrevw" is an abbreviation with a following whitespace:
 abbrevw returns [Object v]
-  : APOSW           {'quote}
+  : QUOTEW          {'quote}
   | QUASIQUOTEW     {'quasiquote}
   | UNQUOTE_SPLICEW {'unquote-splicing}
   | UNQUOTEW        {'unquote} ;
 
 // Production "abbrev_no_w" is an abbreviation without a following whitespace:
 abbrev_no_w returns [Object v]
-  : APOS            {'quote}
+  : QUOTE           {'quote}
   | QUASIQUOTE      {'quasiquote}
   | UNQUOTE_SPLICE  {'unquote-splicing}
   | UNQUOTE         {'unquote};
 
 abbrev_all returns [Object v]
-  : abbrevw         {$abbrevw}
+  : abbrevw hs {$abbrevw}
   | abbrev_no_w     {$abbrev_no_w} ;
 
 // Production "n_expr" is a full neoteric-expression as defined in SRFI-105.
@@ -1217,7 +1297,7 @@ n_expr returns [Object v]
  | n_expr_noabbrev      {$n_expr_noabbrev} ;
 
 // Production "n_expr_first" is a neoteric-expression, but leading
-// abbreviations cannot have an whitespace afterwards (used by "head"):
+// abbreviations cannot have an whitespace afterwards (used by "line_exprs"):
 n_expr_first returns [Object v]
   : abbrev_no_w n1=n_expr_first {(list $abbrev_no_w $n1)}
   | n_expr_noabbrev            {$n_expr_noabbrev} ;
@@ -1226,7 +1306,7 @@ n_expr_first returns [Object v]
 sharp_bang_comments : SRFI_22_COMMENT | SHARP_BANG_FILE
                       | SHARP_BANG_DIRECTIVE ;
 scomment : BLOCK_COMMENT
-         | DATUM_COMMENT_START (options {greedy=true} : hspace)* n_expr
+         | DATUM_COMMENT (options {greedy=true} : hspace)* n_expr
          | sharp_bang_comments ;
 
 // Production "comment_eol" reads an optional ;-comment (if it exists),
@@ -1234,6 +1314,10 @@ scomment : BLOCK_COMMENT
 // additional comment-only lines (if any) which may be indented.
 
 comment_eol : LCOMMENT? EOL;
+
+skippable
+  : scomment hs
+  | DATUM_COMMENTW hs (ignored=n_expr hs | /*empty*/ error ) ;
 </pre>
 
 
@@ -1244,120 +1328,142 @@ Here are the key BNF productions for sweet-expressions:
 </p>
 
 <pre>
-// Production "collecting_tail" returns a collecting list's contents.
+// Production "collecting_content" returns a collecting list's contents.
+// Precondition: At beginning of line.
+// Postcondition: Consumed the matching COLLECTING_END.
 // FF = formfeed (\f aka \u000c), VT = vertical tab (\v aka \u000b)
 
-collecting_tail returns [Object v]
-  : it_expr more=collecting_tail {$v = cons($it_expr.v, $more.v);}
-  | comment_eol    retry1=collecting_tail {$v = $retry1.v;}
-  | INITIAL_INDENT /* Initial indent only allowed for lcomment */
-    LCOMMENT EOL   retry2=collecting_tail {$v = $retry2.v;}
-  | (FF | VT)+ EOL retry3=collecting_tail {$v = $retry3.v;}
-  | COLLECTING_END {$v = null;} ;
-
+collecting_content returns [Object v]
+  : it_expr more=collecting_content {(conse $it_expr $more)}
+  | comment_eol    retry1=collecting_content {$retry1}
+  | INITIAL_INDENT LCOMMENT? EOL retry2=collecting_content {$retry2}
+  | (FF | VT)+ EOL retry3=collecting_content {$retry3}
+  | COLLECTING_END {'()} ;
 
 // Process line after ". hspace+" sequence.  Does not go past current line.
-post_period returns [Object v]
-  : scomment hspace* rpt=post_period {$rpt} // (scomment hspace*)*
-    | pn=n_expr hspace* (scomment hspace*)* (n_expr error)? {$pn}
-    | COLLECTING hspace* pc=collecting_tail hspace*
-      (scomment hspace*)* (n_expr error)? {$pc}
-    | /*empty*/ {"."} ;
 
-// Production "head" reads 1+ n-expressions on one line; it will
+post_period returns [Object v]
+  : skippable retry=post_period {$retry}
+    | pn=n_expr hs skippable* (n_expr error)? {$pn}
+    | COLLECTING hs pc=collecting_content hs
+      skippable* (n_expr error)? {$pc}
+    | /*empty*/ {'.} ;
+
+// Production "line_exprs" reads the 1+ n-expressions on one line; it will
 // return the list of n-expressions on the line.  If there is one n-expression
 // on the line, it returns a list of exactly one item.
+// Precondition: At beginning of line after indent
+// Postcondition: At unconsumed EOL
 
-head returns [Object v]
+line_exprs returns [Object v]
   : PERIOD /* Leading ".": escape following datum like an n-expression. */
       (hspace+ pp=post_period {(list $pp)}
        | /*empty*/    {(list '.)} )
-  | COLLECTING hspace* collecting_tail hspace*
-      (rr=rest            {(cons $collecting_tail $rr)}
-       | /*empty*/        {(list $collecting_tail)} )
+  | COLLECTING hs collecting_content hs
+      (rr=rest_of_line    {(cons $collecting_content $rr)}
+       | /*empty*/        {(list $collecting_content)} )
   | basic=n_expr_first /* Only match n_expr_first */
-      ((hspace+ (br=rest  {(cons $basic $br)}
-                 | /*empty*/  {(list $basic)} ))
-       | /*empty*/            {(list $basic)} ) ;
+      ((hspace+ (br=rest_of_line  {(cons $basic $br)}
+                 | /*empty*/      {(list $basic)} ))
+       | /*empty*/                {(list $basic)} ) ;
 
-// Production "rest" production reads the rest of the expressions on a line
-// (the "rest of the head"), after the first expression of the line.
-// Like head, it consumes any hspace before it returns.
+// Production "rest_of_line" reads the rest of the expressions on a line,
+// after the first expression of the line.
+// Precondition: At beginning of non-first expression on line (past hspace)
+// Postcondition: At unconsumed EOL
 
-rest returns [Object v]
-  : PERIOD /* Improper list */
-      (hspace+  pp=post_period {$pp}
-       | /*empty*/   {(list '.)})
-  | scomment hspace* (sr=rest {$sr} | /*empty*/ {'()} )
-  | COLLECTING hspace* collecting_tail hspace*
-    (rr=rest             {(cons $collecting_tail $rr)}
-     | /*empty*/             {(list $collecting_tail)} )
+rest_of_line returns [Object v]
+  : PERIOD hspace+ pp=post_period {$pp} /* Improper list */
+  | skippable (retry=rest_of_line {$retry} | /*empty*/ {'()})
+  | COLLECTING hs collecting_content hs
+    (rr=rest_of_line     {(cons $collecting_content $rr)}
+     | /*empty*/         {(list $collecting_content)} )
   | basic=n_expr
-      ((hspace+ (br=rest {(cons $basic $br)}
-                 | /*empty*/ {(list $basic)} ))
-       | /*empty*/           {(list $basic)} ) ;
+      ((hspace+ (br=rest_of_line {(cons $basic $br)}
+                 | /*empty*/     {(list $basic)} ))
+       | /*empty*/               {(list $basic)} ) ;
 
 // Production "body" handles the sequence of 1+ child lines in an it_expr
-// (e.g., after a "head"), each of which is itself an it_expr.
+// (e.g., after "line_expr"), each of which is itself an it_expr.
 // It returns the list of expressions in the body.
 
 body returns [Object v]
   : i=it_expr
      (same
-       ( {isperiodp($i)}? =&gt; f=it_expr DEDENT
-           {$f} // Improper list final value
-       | {! isperiodp($i)}? =&gt; nxt=body
-           {(cons $i $nxt)} )
-     | DEDENT {(list $i)} ) ;
+       ( {(isperiodp $i)}? =&gt;   f=it_expr DEDENT {$f} // Improper list
+       | {(isemptytagp $i)}? =&gt; retry=body       {$retry}
+       | {(not_period_and_not_empty $i)}? =&gt; nxt=body {(conse $i $nxt)} )
+     | DEDENT {(list1e $i)} ) ;
 
-// Production "it_expr" (indented sweet-expressions)
-// is the main production for sweet-expressions in the usual case.
+// Production "normal_it_expr" is an it_expr without a special prefix:
 
-it_expr returns [Object v]
-  : head
-    (options {greedy=true} : (
-     GROUP_SPLIT hspace* /* Not initial; interpret as split */
-      (options {greedy=true} :
-        comment_eol error
-        | /*empty*/ {(monify $head)} )
-     | SUBLIST hspace* /* head SUBLIST ... case */
-       (sub_i=it_expr {(append $head (list $sub_i))}
-        | comment_eol error )
+normal_it_expr returns [Object v] 
+  : line_exprs (
+     GROUP_SPLIT hs {(monify $line_exprs)} // split
+     | SUBLIST hs sub_i=it_expr {(appende $line_exprs (list1e $sub_i))}
      | comment_eol // Normal case, handle child lines if any:
-       (INDENT children=body {(append $head $children)}
-        | /*empty*/          {(monify $head)} /* No child lines */ )
-     ))
-  | (GROUP_SPLIT | scomment) hspace* /* Initial; Interpet as group */
+       (INDENT children=body {(appende $line_exprs $children)}
+        | /*empty*/          {(monify $line_exprs)} /* No child lines */ )) ;
+
+// These are it_expr's with a special prefix like \\ or $:
+
+datum_comment_line returns [Object v]
+  : DATUM_COMMENTW hs
+    (is_i=it_expr | comment_eol INDENT body ) {empty_tag} ;
+
+group_line returns [Object v]
+  : (GROUP_SPLIT | scomment) hs /* Initial; Interpet as group */
       (group_i=it_expr {$group_i} /* Ignore initial GROUP/scomment */
        | comment_eol
          (INDENT g_body=body {$g_body} /* Normal GROUP use */
-          | same ( g_i=it_expr {$g_i} /* Plausible separator */
-                   /* Handle #!sweet EOL EOL t_expr */
-                   | comment_eol restart=t_expr {$restart} )
-          | DEDENT error ))
-  | SUBLIST hspace* /* "$" first on line */
-    (is_i=it_expr {(list $is_i)}
-     | comment_eol error )
-  | abbrevw hspace*
+          | same {empty_tag} )) ;
+
+sublist_line returns [Object v] // "$" first on line
+  : SUBLIST hs is_i=it_expr {(list1e $is_i)} ;
+
+abbrevw_line returns [Object v]
+  : abbrevw hs
       (comment_eol INDENT ab=body
-         {(append (list $abbrevw) $ab)}
+         {(appende (list $abbrevw) $ab)}
        | ai=it_expr
-         {(list $abbrevw $ai)} ) ;
+         {(list2e $abbrevw $ai)} ) ;
 
-// Production "t_expr" is the top-level production for sweet-expressions.
-// This production handles special cases, then in the normal case
-// drops to the it_expr production.
+// Production "it_expr" (indented sweet-expressions)
+// is the main production for sweet-expressions in the usual case.
+// Precondition: At beginning of line after indent, NOT at an EOL char
+// Postcondition: it-expr ended by consuming EOL + examining indent
 
-t_expr returns [Object v]
-  : comment_eol    retry1=t_expr {$retry1}
-  | (FF | VT)+ EOL retry2=t_expr {$retry2}
-  | (INITIAL_INDENT | hspaces_maybe_bang) /* initial indent */
+it_expr returns [Object v]
+  : normal_it_expr     {$normal_it_expr}
+  | datum_comment_line {$datum_comment_line}
+  | group_line         {$group_line}
+  | sublist_line       {$sublist_line}
+  | abbrevw_line       {$abbrevw_line} ;
+
+// Production "initial" processes initial indent expresions.
+
+initial returns [Object v]
+  : (INITIAL_INDENT | hspaces_maybe_bang)
     (n_expr {$n_expr}
      | (scomment (options {greedy=true} : hspace)*
-       sretry=t_expr {$sretry})
-     | comment_eol retry3=t_expr {$retry3} )
-  | EOF {(generate_eof)} /* End of file */
-  | it_expr {$it_expr} /* Normal case */ ;
+       sretry=t_expr_real {$sretry})
+     | comment_eol retry3=t_expr {$retry3} ) ;
+
+// Production "t_expr_real" handles special cases, else it invokes it_expr.
+
+t_expr_real returns [Object v]
+  : comment_eol    r1=t_expr_real {$r1} // Skip initial blank lines
+  | (FF | VT)+ EOL r2=t_expr_real {$r2} // Skip initial FF|VT lines
+  | initial {$initial}
+  | EOF {(generate_eof)} // End of file
+  | i=it_expr {$i} /* Normal case */ ;
+
+// Production "t_expr" is the top-level production for sweet-expressions.
+
+t_expr returns [Object v]
+  : te=t_expr_real	
+    ( {(isemptytagp $te)}? =&gt; retry=t_expr {$retry}
+      | {$te} ) ;
 </pre>
 
 
@@ -1400,8 +1506,6 @@ A sweet-expression reader <em>SHOULD</em> support
 and
 <a href="http://srfi.schemers.org/srfi-62/">SRFI-62
 (S-expression comments)</a> (<tt>#;</tt><var>datum</var>).
-Portable applications <em>SHOULD NOT</em> include whitespace
-after <code>#;</code> for a datum comment.
 A sweet-expression reader <em>SHOULD</em> support
 <a href="http://srfi.schemers.org/srfi-22/">SRFI-22
 (Running Scheme Scripts on Unix)</a> (where <tt>#!</tt>
@@ -2207,18 +2311,30 @@ see s-expressions as long-winded, and advocate for the use of
 underlying s-expression notation.
 Sweet-expressions take this approach.
 </p>
-<h3 id="why-indent">Why should indentation be syntactically relevant?</h3>
+
+<h3 id="why-indent">Why should indentation be syntactically meaningful?</h3>
 
 <p>
-Making indentation syntactically meaningful eliminates many
-parentheses, eliminating the need for humans to keep track of them.
-Real Lisp programs are already indented anyway;
-currently tools (like editors and pretty-printers) are used to try to
-keep the indentation (used by humans) and parentheses (used by
-the computers) in sync.
-By making the indentation (which humans depend on)
-actually used by the computer as well,
-they are automatically kept in sync.</p>
+Current Lisp syntax is widely mocked in the software development community;
+as noted above, lisp is sometimes called
+&#8220;lots of irritating superflous parentheses&#8221;.
+Even Lisp&#8217;s creator, John McCarthy,
+did not intend for s-expressions to be used directly by developers.
+</p>
+
+<p>
+The problem is not the existence of grouping symbols;
+nearly all programming languages have grouping symbols.
+For example, languages with C-like syntax often use {...} to surround
+statement groups, and (...) are widely used to group infix operators
+in expressions.
+The problem with Lisp s-expression notation is that parentheses
+(and possibly other paired characters)
+are the <i>only</i> way to group constructs,
+<i>and</i> that almost <i>every</i> construct requires a grouping construct.
+As a result, Lisp programs have a large number of parentheses,
+far more than many developers prefer.
+</p>
 
 <p>
 <a href="http://www.gregslepak.com/on-lisps-readability">On
@@ -2235,41 +2351,214 @@ indenting to follow the parens, I want the parens to follow the indenting.
 The indenting I can see, and can see is correct.&#8221;</p>
 
 <p>An IDE can help keep the
-indentation consistent with the parentheses, but
+indentation consistent with the parentheses,
+and editing modes are certainly helpful when reading and modifying
+Lisp programs.
+But
 <a href="http://www.recursivity.com/blog/2012/10/28/ides-are-a-language-smell/">needing IDEs to use a language</a>
 is considered by some a language smell.
-If you need special
-tools to work around problems with the notation, then the notation itself
-is a problem.</p>
+After all, a good IDE can support a good notation too.
+If you need special tools to work around problems
+with the notation, then the notation itself is a problem.
+</p>
 
-<p>A solution, of course, is to make the indentation
-actually matter: Now you don&#8217;t need an endless march of parentheses, and
-indentation can&#8217;t be confusing because it is actually used.</p>
+<p>
+Some obvious &#8220;solutions&#8221; do not work well enough:
+</p>
+<ol>
+<li>
+We can add another character pair.
+Scheme R6RS did this by adding [...].
+Some implementations also allow {...}.
+But in practice this does not seem to work well;
+relatively few people use these alternatives in practice, and no one
+claims that the result is as readable as other languages (e.g., Python).
+Scheme R7RS-small dropped supporting [...],
+with a strong vote against them
+(out of 15 voters, 11 voted against supporting [...]).
+<!--
+The votes were reported by John Cowan on the srfi-110 mailing list
+on 2013-05-28, subject "Re: sweet-expressions are not homoiconic".
+-->
+Part of the problem may be that (), [], and {}
+aren&#8217;t visually distinct enough to be helpful, but regardless
+of the the reason, there is clearly no groundswell supporting them.
+</li>
+<li>
+We could define a fixed syntax that is tailored to fixed language semantics.
+That is the &#8220;usual way&#8221; this problem is solved
+in other languages,
+and when these languages are used in their anticipated domain,
+this works well.
+But Lisps are often used for symbol manipulation,
+where symbols may actually be for a domain-specific language
+and where you can easily create new meanings (via macros).
+So this &#8220;usual solution&#8221; doesn&#8217;t well work for Lisps
+(without giving up some of the reasons for using a Lisp in the first place).
+</li>
+</ol>
+
+<p>
+Thankfully, making indentation syntactically meaningful
+can be general; that is,
+it does <i>not</i> need to be tied to any particular semantic.
+A notation where indentation is syntactically meaningful
+can also be homoiconic.
+As noted earlier, a Lisp notation needs to be
+<em>general</em> and <em>homoiconic</em>.
+Yet indentation can represent complexly-nested structures
+<i>and</i> do it in a way that is
+visually distinct from parentheses.
+An indentation-sensitive approach is also
+easy to define in a way that retains backwards compatibility.
+</p>
+
+<p>
+Making indentation syntactically meaningful eliminates many
+parentheses, making it much simpler for humans to determine
+which datums are in which expression.
+Lisp programs <i>already</i> use indentation to show structure,
+indeed, developers in nearly all languages already
+use indentation to show structure even when it is ignored by
+the underlying system.
+Currently tools (like editors and pretty-printers) are used to try to
+keep the indentation (used by humans) and parentheses (used by
+the computers) in sync.
+By making the indentation (which humans depend on)
+actually used by the computer as well,
+they are automatically kept in sync.
+Syntactically-meaningful indentation complements parentheses nicely;
+we find that people naturally use indentation to show
+the larger structure of an expression, and then use a few
+parentheses to show its &#8220;leaves&#8221;.
+</p>
+
+<p>
+In this SRFI we call this approach
+&#8220;syntactically-meaningful indentation&#8221;.
+A related term is the
+&#8220;<a href="https://en.wikipedia.org/wiki/Off-side_rule">off-side rule</a>&#8221;
+(from
+<a href="http://web.archive.org/web/20070417180907/http://www.cs.utah.edu/~eeide/compilers/old/papers/p157-landin.pdf">
+&#8220;The Next 700 Programming Languages&#8221; by P. J. Landin,
+<i>Communications of the ACM</i>,
+Volume 9 / Number 3, March 1966</a>,
+describing the ISWIM (If you See What I Mean) language family).
+The original definition of the off-side rule,
+per Landin&#8217;s paper,
+is a very specific form of syntactically-meaningful indentation:
+&#8220;[the] southeast quadrant that just contains the
+phrase&#8217;s first symbol must contain the entire
+phrase, except possibly for bracketed subsegments.&#8221;
+The term &#8220;off-side rule&#8221;
+is often used today with a broader meaning
+(possibly including any syntactic use of indentation).
+To avoid confusion,
+we&#8217;ll use the clearer term
+&#8220;syntactically-meaningful indentation&#8221;.
+</p>
+
+<p>
+Using syntactically-meaningful indentation is a proven idea.
+Programming languages that use syntactically-meaningful indentation include
+<a href="http://www.python.org/">Python</a>
+(the <a href="http://www.tiobe.com/index.php/tiobe_index">
+eighth most popular programming language in the May 2013 TIOBE index</a>),
+<a href="http://www.haskell.org">Haskell</a>,
+<a href="https://en.wikipedia.org/wiki/Occam_%28programming_language%29">Occam</a>,
+<a href="http://en.wikipedia.org/wiki/F_Sharp_%28programming_language%29">F#</a>,
+<a href="http://homepages.cwi.nl/~steven/abc/">ABC</a>,
+and
+<a href="http://cobralang.com/docs/python/" rel="nofollow">Cobra</a>
+(a variant of Python with strong compile-time typechecking).
+Indeed,
+<a href="https://lwn.net/Articles/544290/">Python core developer
+Raymond Hettinger gave a list of what he believed were
+the &#8220;winning language features&#8221; of Python
+in his PyCon 2013 keynote, and the first item he listed
+was the required indentation of Python</a>.
+Raymond said that this syntactically meaningful indentation
+&#8220;contributes to the &#8216;clean, uncluttered&#8217; appearance of the code...
+[and] is a net positive...
+Python &#8216;never lies with its visual appearance&#8217;,
+which is a winning feature&#8221;.
+Notations for data and documents that use syntactically-meaningful
+indentation include <a href="http://www.yaml.org/">YAML</a>,
+as well as the lists and quotations of
+<a href="http://daringfireball.net/projects/markdown/">Markdown</a> and
+<a href="http://docutils.sourceforge.net/rst.html">reStructuredText</a>.
+The triumvirate preprocessors of
+<a href="http://haml.info/">HAML</a> (to generate HTML),
+<a href="http://sass-lang.com/">Sass</a> (to generate CSS),
+and
+<a href="http://coffeescript.org/">Coffeescript</a>
+(to generate JavaScript)
+also use syntactically-meaningful indentation.
+The Wikipedia article
+<a href="https://en.wikipedia.org/wiki/Off-side_rule">off-side rule</a>
+lists additional notations with
+syntactically-meaningful indentation.
+</p>
+
+<p>
+The StructuredText markup notation also has syntactically-meaningful
+notation, and potentially serves as a cautionary tale that
+mechanisms other than indentation are needed in a practical notation.
+As noted in
+<a href="http://docutils.sourceforge.net/docs/dev/rst/problems.html">
+<i>Problems With StructuredText</i></a>,
+the
+&#8220;original StructuredText and StructuredTextNG require that
+section structure be indicated through indentation,
+as &#8216;inspired by Python&#8217;.
+For certain structures with a very limited,
+local extent (such as lists, block quotes, and literal blocks),
+indentation naturally indicates structure or hierarchy.
+For sections (which may have a very large extent),
+structure via indentation is unnecessary, unnatural and ambiguous.&#8221;
+However, the authors of that commentary did not abandon
+syntactically-meaningful notation.
+Instead, when they created reStructuredText, they 
+retained syntactically-meaningful notation
+but added a different special notation for sections.
+Sweet-expressions is also a syntactically-meaningful notation, but
+its collecting list mechanism enables users to
+avoid having indentations with very long extents.
+</p>
+
+<!-- Icon was originally in this list, but it should not have been.
+John David Stone:
+"Icon does feature syntactically significant whitespace, in that
+newline can be used as alternative statement terminator,
+in place of a semicolon...
+But indentation is _never_ used for _grouping_ in Icon, which has
+the usual repertoire of braces, brackets, and parentheses and uses them
+pretty much as they are used in C. Indeed, as the Griswolds say on page 33
+of _The Icon programming language_ (third edition), "Even if braces are not
+necessary [because, as in C, they are optional when they enclose a single
+statement], using them helps avoid errors that may result from unexpected
+groupings in complicated expressions. Using braces to delimit expressions
+also can make programs easier to read - it is difficult for human beings
+to parse nested expressions." -->
+
+<p>
+Another historical
+problem with indentation as syntactically relevant is that some
+transports drop leading space and tab characters.
+As discussed in the
+<a href="#indentation-characters">indentation characters</a> section,
+we have solved this by adding &#8220;!&#8221; as an indentation character.
+</p>
 
 <p>&#8220;In
 praise of mandatory indentation...&#8221; notes that it can be <em>helpful</em>
 to have mandatory indentation:</p>
-<blockquote> <p>It hurts me to say
+<blockquote>
+<p>It hurts me to say
 that something so shallow as requiring a few extra spaces can have
 a bigger effect than, say, Hindley-Milner type inference.
 - <a href="http://okasaki.blogspot.com/2008/02/in-praise-of-mandatory-indentation-for.html">Chris Okasaki</a></p>
 </blockquote>
-
-<p>Other languages,
-including Python, Haskell, Occam, and Icon, use indentation to indicate
-structure, so this is a proven idea.  Other recently-developed languages
-like <a href="http://cobralang.com/docs/python/" rel="nofollow">Cobra</a>
-(a variant of Python with strong compile-time typechecking) have
-decided to use indentation too, so clearly indentation-sensitive
-languages are considered useful by many.</p>
-
-<p>
-One problem with indentation as syntactically relevant is that some
-transports drop leading space and tab characters.
-As discussed in the
-<a href="#indentation-characters">indentation characters</a> section,
-we have solved this as well.
-</p>
 
 <p>There&#8217;s a lot of
 past work on indentation to represent s-expressions.
@@ -2286,7 +2575,7 @@ href="http://en.wikipedia.org/wiki/RTML" rel="nofollow">RTML</a> is
 implemented using Lisp, but uses indentation instead of parentheses to
 define structure.  RTML is a proprietary programming language that at
 least <em>was</em> used by Yahoo!&#8217;s Yahoo! Store and Yahoo! Site
-hosting products (though Yahoo may have transitioning away from it).
+hosting products (though Yahoo may have transitioned away from it).
 See <a href="http://lib.store.yahoo.net/lib/paulgraham/bbnexcerpts.txt">Paul
 Graham&#8217;s comments
 about the RTML language design</a> and <a
@@ -2309,7 +2598,8 @@ SRFI-49, I-expressions</a> - which are discussed next.
 
 <p>The sweet-expression indentation system is based on
 <a href="http://srfi.schemers.org/srfi-49/srfi-49.html">Scheme
-SRFI-49 (&#8220;surfi-49&#8221;), aka I-expressions</a>.
+SRFI-49 (&#8220;surfi-49&#8221;), aka I-expressions, by
+Egil M&ouml;ller</a>.
 The basic rules of SRFI-49
 (I-expression) indentation are kept in sweet-expressions; these are:</p>
 <ul>
@@ -2594,20 +2884,23 @@ and others have argued for less;
 we have tried to strike a balance.
 </p>
 
-
 <p>
-The specification itself looks more complex, but that is because
-we have chosen to develop a rigorous specification using an exacting BNF.
-This was in response to lessons learned with SRFI-49;
-the SRFI-49 specification was simpler but left a number of issues
+We have chosen to develop a rigorous specification using an exacting BNF.
+It could be simpler if we were not rigorous, but this
+was in response to lessons learned with SRFI-49.
+The SRFI-49 specification was simpler but left a number of issues
 underspecified, and thus it easily led to different interpretations.
 The key BNF definitions for sweet-expressions
-only require 88 non-comment non-blank lines for 7 productions in ANTLR.
+only uses 14 productions in 104 non-comment non-blank lines.
 As a comparison, defining Scheme simple datums
 (such as identifiers and numbers) using the same notation
-required more lines (109 non-comment non-blank lines)
-and more productions (52).
-<!-- measurement taken on 2013-03-27 using "sweet.g" -->
+uses far more productions (52) and
+a few more lines (109 non-comment non-blank lines).
+<!-- measurement taken on 2013-07-26.
+Text inside "key-bnf"'s "pre" section was copied to file ",z".  Then:
+  grep '^[a-zA-Z]' ,z | wc -l
+  grep -v '^ *$' ,z | grep -v '^/' | wc -l
+ -->
 </p>
 
 <p>
@@ -2854,6 +3147,7 @@ questioned this semantic on the SRFI-110 discussion list, saying,
 additionally require a comment ... to express
 ignored vertical whitespace.
 Isn&#8217;t this the cleanest thing possible:&#8221;
+</p>
 <pre>
   define long-func(x)
   let ((foo bar(x)))
@@ -2863,7 +3157,6 @@ Isn&#8217;t this the cleanest thing possible:&#8221;
   ! more stuff
   ! ...
 </pre>
-</p>
 
 <p>
 On May 2, 2013, David Vanderson said he was for allowing &#8220;!&#8221;
@@ -3191,7 +3484,8 @@ define foo(x)
 <p>
 Although the reasons above pertain mostly to block comments,
 datum comments (<code>#;</code>) are considered
-essentially identical to block comments.
+essentially identical to block comments if &#8220;#;&#8221; is not followed by
+whitespace.
 </p>
 <p>
 We could have mandated a different behavior between datum
@@ -3290,8 +3584,8 @@ The same problem applies to PS, which is not used in practice.
 <p>
 CR by itself is obsolescent.
 However, CR by itself has been used on many historical systems,
-so we expect there are older files which still use it.
-Lone CR is permitted by various Scheme specifications,
+so we expect that there are older files which still use it.
+Lone CR <i>is</i> permitted by various Scheme specifications,
 and it is easy to implement too.
 Thus, we believe it is worth including in the specification.
 </p>
@@ -3307,7 +3601,7 @@ to kill CR/LF/CR+LF, which failed completely..."
 -->
 
 <p>
-Reversed LFCR does not happen in practice, and attempting to
+Reversed LFCR almost never happens in practice, and attempting to
 detect it triggers a bug in many versions of the
 guile implementation of Scheme.
 In many versions of guile, peek-char consumes (instead of just peeking)
@@ -3682,34 +3976,69 @@ This would require several levels of indentation
 without sublist, but they are easily handled with sublist.
 </p>
 <p>
-An example is
-scsh, which has functions like &#8220;run&#8221; that are applied to
-another list.
+This may be easiest to see with an example.
+The Scheme shell (scsh) has functions
+like &#8220;run&#8221; that take one parameter (another list) and
+apply them specially.
 With sublist, this is easily expressed.
-For example, here&#8217;s a sweet-expression using scsh:
+You can even try this out by using the &#8220;unsweeten&#8221; tool
+developed by the readable project and entering this
+(which allows sweet-expressions can be directly used
+to control the Scheme shell scsh):
 </p>
 <pre>
-  run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
+  unsweeten | scsh
+</pre>
+<p>
+For example, here&#8217;s a sweet-expression that could be typed into
+this and then executed using scsh:
+</p>
+<pre>
+  run $ grep -v "xx.*zz" &lt;(oldfile) &gt;(newfile)
 </pre>
 
 <p>
-(Oh, and a brief aside:
-For full Scheme standards compliance, you should escape any symbol
-beginning with &#8220;-&#8221; by surrounding it with |...|.
-One problem is that RnRS does not require support for <i>any</i>
-symbols that start with &#8220;-&#8221;,
-as they are not in the set of defined <code>&lt;initial&gt;</code>.
-Many actual Schemes in practice do support such symbols,
-including the sample implementation, but such code is not portable.
-Another problem is that
-&#8220;-i&#8221; is the negated square root of 1, so
-that specific option is especially awkward.
-The sample implementation supports |...|, so |-v| would work
-and comply with the latest standards.
-Note, however, that scsh does not yet directly support |...|.
+Oh, and a brief aside:
+There are some complications when combining symbols beginning with
+&#8220;-&#8221;, especially with older Scheme specifications.
 These issues have nothing to do with sweet-expressions,
-but we thought you should know about that.)
+but we thought you should know about them since they impact using
+Scheme as a shell (and sweet-expressions do make such uses easier):
 </p>
+<ol>
+<li>One specific problem is that
+&#8220;-i&#8221; is the negated square root of 1 in later versions of
+Scheme, so the
+specific option &#8220;-i&#8221; is awkward to portably refer to.
+</li>
+<li>
+The sample implementation, R6RS, and R7RS all support escaping
+symbol identifiers with |...|, so |-v| would work
+and comply with the later standards.
+However, R5RS does not require support for |...|, and scsh version 0.6.7
+does not provide support for |...|.
+(In scsh, -i is a symbol, not a number.)
+</li>
+<li>
+R5RS and R6RS do not require support for <i>any</i>
+symbols that directly start with &#8220;-&#8221;,
+other than &#8220;-&#8221; itself
+(as they are not in the set of defined <code>&lt;initial&gt;</code>).
+If you want full compliance with the R6RS Scheme standard,
+you should escape any multi-character symbol
+beginning with &#8220;-&#8221; by surrounding it with |...|.
+The R7RS specification does allow symbols to be directly written
+in most cases beginning with &#8220;-&#8221;
+(e.g., if followed by a letter or a dash), with the exception of
+&#8220;-i&#8221;, so in most cases options do not require escaping
+to be portable in R7RS.
+In fact, many actual Schemes in practice do support such symbols,
+even if they do not claim to implement R7RS.
+Note that the sample implementation permit symbols beginning with
+&#8220;-&#8221;; if the sequence of characters is not a number, it is
+considered a symbol.
+</li>
+</ol>
 
 <p>SUBLIST also makes certain idioms possible.
 For instance,
@@ -3910,6 +4239,186 @@ if SUBLIST always created a list
 even in the case that the right-hand side
 is a single datum.
 </p>
+
+<h3 id="why-specific-symbols">
+Why specifically use <code>$</code> for SUBLIST,
+and <code>\\</code> for the two behaviors GROUP and SPLIT?
+</h3>
+
+<p>
+<a href="http://srfi.schemers.org/srfi-110/mail-archive/msg00174.html">
+On 2013-05-27,
+</a>
+John David Stone posted on the SRFI-110 mailing list that,
+&#8220;there is nothing about
+the <code>\\</code> and <code>$</code> symbols
+that represents the corresponding syntactic structures,
+and indeed <code>\\</code> is used
+in two completely different ways,
+depending on context.
+It even has two different names,
+GROUP and SPLIT,
+as if to emphasize the impossibility
+of making the same symbol
+serve as an icon
+for two unlike syntactic operations.
+&#8221;
+</p>
+<p>
+As it happens, both symbols were chosen
+by the same author (Alan Manuel K. Gloria),
+and he had already posted the rationales
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00404.html">for using <code>$</code> for SUBLIST</a>,
+as well as
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00329.html">for using <code>\\</code> for GROUP and SPLIT</a>,
+on the readable-discuss mailinglist
+where this notation
+and the SRFI-105 notation
+were initially developed.
+</p>
+<p>
+For SUBLIST, one basically considers &#8220;zooming in&#8221;
+on the <code>$</code> symbol,
+while looks a little like this:
+</p>
+<pre>
+  (|   &lt;-- open parenthesis
+   |)  &lt;-- close parenthesis
+</pre>
+<p>
+This visual pun is largely due
+to the common behavior
+that <code>a $ b c</code>
+will magically insert
+a pair of open and close parentheses.
+Of course,
+<code>a $ b</code> will
+not insert parentheses,
+but the reason for this
+<a href="#single-item-sublist">was explained in the previous section</a>.
+</p>
+<p>
+For GROUP/SPLIT,
+the main reason for merging
+the two &#8220;unlike&#8221; behaviors
+GROUP and SPLIT
+into a single symbol
+is because of the following
+reversible transformation:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>SPLIT</th><th>GROUP</th></tr>
+<tr>
+<td>
+<pre>
+:foo \\ bar
+</pre>
+</td>
+<td>
+<pre>
+:foo
+\\  bar
+</pre>
+</td>
+</tr>
+</table>
+<p>
+This reversible transformation
+is useful for keywords.
+While the Scheme standard
+does not have keywords,
+they are idiomatic
+in some implementations &mdash;
+notably Guile &mdash;
+and are idiomatic
+in other Lisp-like languages &mdash;
+notably Common Lisp.
+Here is an example
+of defining a class in Guile&#8217;s GOOPS:
+</p>
+<pre>
+define-class &lt;player&gt; (&lt;game-object&gt;)
+  owned
+    #:allocation \\ #:virtual
+    #:slot-ref
+    \\  lambda (pl)
+          player-owned pl
+    #:slot-set!
+    \\  lambda (_ __)
+          error "attempt to change 'owned slot of &lt;player&gt;." _ __
+</pre>
+<p>The exact symbol <code>\\</code>
+was chosen because
+there were four
+expected use cases,
+summarized below:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>Use Case</th><th>Example</th><th>Why <code>\\</code></th></tr>
+<tr>
+<td>Lists of lists</td>
+<td><pre>
+let
+  \\
+  ! foo $ compute 'foo
+  ! bar $ compute 'bar
+  { foo + bar }
+</pre></td>
+<td><p>The <code>\\</code> points
+to the lower right,
+where the list elements are.
+</p></td>
+</tr>
+<tr>
+<td>Denoting keyword values</td>
+<td><pre>
+keyworded-function
+  :keyword
+  \\ compute 'keyword-value
+</pre></td>
+<td><p>Think of the <code>\\</code>
+as a &#8220;rounded edge&#8221;
+directing an invisible, bent line
+from the bottom of the keyword
+that turns 90 degrees to point
+to its attached value.</p>
+<pre>
+:keyword
+|
+\\-&gt; compute 'keyword-value
+</pre></td>
+</tr>
+<tr>
+<td>Separate elements on a single line</td>
+<td><pre>
+display "Hello, " \\ display player \\ newline()
+</pre></td>
+<td><p>The <code>\\</code> is almost like
+a vertical bar
+separating the elements.</p></td>
+</tr>
+<tr>
+<td>Alternative for denoting empty line</td>
+<td><pre>
+define foo(x)
+  \\
+  define bar(y)
+    compute 'bar x y
+  \\
+  compute 'foo bar x
+</pre></td>
+<td><p>
+The <code>\\</code> is
+almost like a vertical bar
+pointing downwards.
+Arguably the comment <code>;</code>
+is superior for this usage,
+but the option exists
+for whatever rhetorical reason
+users might find.
+</p></td>
+</tr>
+</table>
 
 <h3 id="collecting-lists">Collecting lists (&lt;* ... *&gt;)</h3>
 <p>
@@ -4150,6 +4659,47 @@ must be escaped (e.g., using {...}) if it is used in an
 indentation-processing context.
 </p>
 
+<h3 id="line-continuation">Line Continuation</h3>
+<p>
+Sweet-expressions do not, at this time, include a line continuation
+mechanism.
+</p>
+
+<p>
+One could be easily added.
+One approach would be to consider &#8220;.&#8221; at the beginning
+of a line, with expressions after it,
+as meaning &#8220;this continues the previous line&#8221;.
+Another approach would be to interpret &#8220;\\&#8221; at the
+end of a line (after at least one n-expression)
+as a line continuation; we even
+have a draft BNF construction that would do that:
+</p>
+<pre>
+...
+it_expr returns [Object v]
+  : head
+    (options {greedy=true;} : (
+     GROUP_SPLIT hspace* /* Not initial; interpret as split */
+      (options {greedy=true;} :
+        // To allow \\ EOL as line-continuation, instead do:
+        //   comment_eol same more=it_expr {$v = (append $head $more)}
+        comment_eol error
+</pre>
+
+<p>
+However,
+we&#8217;ve tried to <i>minimize</i> the number of mechanisms in the notation,
+and there didn&#8217;t seem to be a strong use case for line continutations.
+If the sub-components have structure you can just use
+indentation as intended,
+and if it&#8217;s just a long list of items, using
+parentheses to surround a list works just fine.
+There were also concerns by some
+that &#8220;\\&#8221; at the end of a line would be confusing.
+It would be easy to add &#8220;\\&#8221; as a line continuation in some future
+version if it proves to be necessary.
+</p>
 
 <h2 id="comparisons">Comparisons to other notations</h2>
 <p>
@@ -5479,8 +6029,6 @@ a longer format such as:
     others past
 </pre>
   
-</p>
-
 <p>
 A minor problem with wisp is that it uses &#8220;:&#8221; as an operator.
 While &#8220;$&#8221; is relatively uncommon as an operator,
@@ -6267,17 +6815,38 @@ for the reference implementation</a>.
 <p>We thank all the participants on the &#8220;readable-discuss&#8221;
 and &#8220;SRFI-105&#8221; mailing lists, including
 <!-- Sort credits alphabetically by last name -->
+Kartik Agaram,
 Arne Babenhauserheide,
+Eduardo Bellani,
 Ben Booth,
 Per Bothner,
 Beni Cherniavsky-Paskin,
 John Cowan,
 Shiro Kawai,
 Jos Koot,
+Alpheus Madsen,
+Egil M&ouml;ller,
+John David Stone,
+Neil Toronto,
 Mark H. Weaver,
+Niklas Ulvinge,
 David Vanderson,
 and many others whose names
 should be here but aren&#8217;t.</p>
+
+<!--
+John David Stone doesn't agree with some of the approaches here,
+but he did provide useful comments (e.g., clarification that
+Icon is not indentation-sensitive).
+
+David A. Wheeler asked John David Stone:
+ Ok to give you credit in the SRFI-110 list of participants, even if you don't
+ agree with it?  Or would you prefer that I not list you?
+
+On Sun, 26 May 2013 18:13:11 -0500, John David Stone <stone@cs.grinnell.edu> wrote:
+ I think that it would be fair to list me, and you have my
+ permission to do so.
+-->
 
 <h1><a name="copyright">Copyright</a></h1>
 <p>Copyright (C) 2012-2013 <a href="http://www.dwheeler.com">David A. Wheeler</a> and Alan Manuel K. Gloria.
