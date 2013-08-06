@@ -19,7 +19,7 @@ David A. Wheeler, Alan Manuel K. Gloria
 
 This SRFI is currently in ``draft'' status.
 -->
-<meta name="description" content="This defines sweet-expressions (t-expressions) for Scheme, building on neoteric-expressions (n-expressions) and curly-infix-expressions (c-expressions). This defines an approach to making Scheme more 'readable' by adding syntactically-relevant indentation, as well as supporting infix and functions whose names precede the opening parenthesis.">
+<meta name="description" content="This defines sweet-expressions (t-expressions) for Scheme, building on neoteric-expressions (n-expressions) and curly-infix-expressions (c-expressions). This defines an approach to making Scheme more 'readable' by adding syntactically-meaningful indentation, as well as supporting infix and functions whose names precede the opening parenthesis.">
 <meta name="keywords" content="sweet, sweet-expression, sweet-expressions, t-expression, Scheme, Lisp, Common Lisp, neoteric-expression, n-expression, readable, notation, s-expression, s-expr, M-expressions, SRFI, implementation, David Wheeler, David A. Wheeler, Alan Manuel Gloria, Alan Manuel K. Gloria">
 <meta name="generator" content="vim">
 <!-- Copy CSS style of SRFI-64; credits to Per Bothner. -->
@@ -79,9 +79,9 @@ subscribe to the list.  You can access previous messages via
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.10">2013/05/01</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.11">2013/05/24</a></li>
       <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.12">2013/07/29</a></li>
+      <li>Revised: <a href="http://srfi.schemers.org/cgi-bin/viewcvs.cgi/*checkout*/srfi/srfi-110/srfi-110.html?rev=1.13">2013/08/05</a></li>
       <li>Draft: 2013/03/06-2013/05/06</li>
     </ul>
-
 
 <p>
 This SRFI contains all the required sections, including
@@ -96,8 +96,9 @@ It also includes a longer
 
 <h1><a name="abstract">Abstract</a></h1>
 <p>
-This SRFI describes a new extended syntax for Scheme, called sweet-expressions
-(t-expressions), that has the same descriptive power as s-expressions
+This SRFI describes a set of syntax extensions for Scheme,
+called sweet-expressions (t-expressions),
+that has the same descriptive power as s-expressions
 but is designed to be easier for humans to read.
 The sweet-expression syntax enables the use of syntactically-meaningful
 indentation to group expressions (similar to Python),
@@ -184,12 +185,13 @@ define fibfast(n)   ; Typical function notation
   </li>
   <li><a href="#whitespace-indentation-comment">Whitespace, indentation, and comment handling</a>
   <ul>
-  <li><a href="#empty-lines">Empty lines</a></li>
+  <li><a href="#blank-lines">Blank lines</a></li>
   <li><a href="#trailing-hspace">Trailing horizontal spaces are ignored</a></li>
   <li><a href="#indentation-characters">Indentation characters (! as indent)</a></li>
   <li><a href="#disabling-indentation-processing-with-paired-characters">Disabling indentation processing with paired characters</a></li>
   <li><a href="#disabling-indentation-processing-with-an-initial-indent">Disabling indentation processing with an initial indent</a></li>
   <li><a href="#block-comment-indent-significant">Why are the indentations of block comments and datum comments significant?</a></li>
+  <li><a href="#child-is-child">Child lines producing an empty value are still child lines</a></li>
   <li><a href="#eol">End-of-line (EOL) handling</a></li>
   <li><a href="#eof">End-of-file (EOF) handling</a></li>
   <li><a href="#semicolon">Special semicolon values for an unsweetener</a></li>
@@ -198,7 +200,7 @@ define fibfast(n)   ; Typical function notation
   <li><a href="#specific-constructs">Other specific sweet-expression constructs</a>
   <ul>
   <li><a href="#singleton">Singleton expression represents itself</a></li>
-  <li><a href="#sweet">The #!sweet marker</a></li>
+  <li><a href="#sweet">The #!sweet directive</a></li>
   <li><a href="#grouping-and-splitting">Grouping and splitting (\\)</a></li>
   <li><a href="#initial-group-mean-nothing">Why does initial \\ mean nothing if there are datums afterwards on the same line?</a></li>
   <li><a href="#traditional-abbreviations">Traditional abbreviations</a></li>
@@ -465,16 +467,35 @@ define gcd(x y)
 </pre>
 </td>
 </tr>
+<tr>
+<td align="left" valign="top">
+<pre>
+define factorial(n)
+  if {n &lt;= 1}
+     1
+     {n * factorial{n - 1}}
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (factorial n)
+  (if (&lt;= n 1)
+      1
+      (* n (factorial (- n 1)))))
+</pre>
+</td>
+</tr>
+
 </table>
 </blockquote>
 
 <p>
-An <a href="#empty-lines">empty line
+A <a href="#blank-lines">blank line
 (a line containing only 0+ spaces and tabs)
 ends an expression once one has begun</a>.
 This makes sweet-expressions easy to use interactively; just press
 &#8220;Enter Enter&#8221; to end an expression.
-Empty lines are ignored before an expression begins.
+Blank lines are ignored before an expression begins.
 </p>
 
 <p>
@@ -486,7 +507,7 @@ need to be <dfn>consistently indented</dfn>, that is,
 the current line&#8217;s indentation, when compared to the
 previous line&#8217;s, are equal or one is a prefix of the other.
 <a href="#disabling-indentation-processing-with-paired-characters">Indentation
-is ignored inside ( ), [ ], and { },
+processing does not occur inside ( ), [ ], and { },
 whether they are prefixed or not</a>;
 this makes sweet-expressions backwards-compatible with traditional
 s-expressions, and also provides an easy way to disable indentation
@@ -519,21 +540,19 @@ otherwise it comments out the next <i>neoteric-expression</i>.
 </li>
 <li>
 A single delimited period (.) still sets the value of the cdr field of a pair.
-If the period is not the first datum on the line, the next datum on the
-line is the cdr value.
 If the period is the only datum on the line, then the next (sibling) line
 is the cdr value.
-A period at the beginning of a line, with one datum after it,
-escapes that datum (just like neoteric-expressions do);
-a period at the end of a line, with at least one datum before it,
-is considered the same as |.|.
+A period at the beginning of a line, with exactly one datum after it,
+escapes that datum (just like neoteric-expressions do).
+If the period is not at the beginning of the line, there must be
+exactly one following datum on the line (the cdr value).
 </li>
 <li>An expression that
 <a href="#disabling-indentation-processing-with-an-initial-indent">starts
 indented enables &#8220;initial-indent&#8221; mode</a>.
 That line is considered a sequence of whitespace-separated
 neoteric-expressions that are each read separately
-(this also helps backwards compatibility).</li>
+(this helps backwards compatibility).</li>
 </ol>
 
 <p>
@@ -566,13 +585,10 @@ aaa bbb
 <tr>
 <td align="left" valign="top">
 <pre>
-ff ; Demo special comments
+ff ; Demo block comments
   #| qq |# t1 t2
   t3 t4
     t5 #| xyz |# t6
-    t7 #;t8(q) t9
-  #; this is
-     all ignored
 </pre>
 </td>
 <td align="left" valign="top">
@@ -580,12 +596,42 @@ ff ; Demo special comments
 (ff
   (t1 t2)
   (t3 t4
-    (t5 t6)
-    (t7 t9)))
+    (t5 t6)))
 </pre>
 </td>
 </tr>
 
+<tr>
+<td align="left" valign="top">
+<pre>
+t7 #;t8(q) t9 ; Demo datum comments
+  stuff #; a(b) here
+  #; this is
+     all ignored
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(t7 t9
+  (stuff here))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+foo ; <a href="#child-is-child">Empty-value child line is still a child</a>
+  #; bar
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(foo
+    )
+</pre>
+</td>
+</tr>
 <tr>
 <td align="left" valign="top">
 <pre>
@@ -623,7 +669,7 @@ f ; Demo vertical improper list
 <tr>
 <td align="left" valign="top">
 <pre>
-; Initial indent
+; Demo initial indent
     (define x 1) (define y 2)
 </pre>
 </td>
@@ -659,12 +705,12 @@ Below is an explanation of each.
 The
 <a href="#grouping-and-splitting">marker <code>\\</code>
 is specially interpreted</a>.
-If any n-expressions precede it on the line, it is called SPLIT, and
-it is interpreted as
-the start of a new line at the current line&#8217;s indentation.
-Otherwise it is called GROUP,
+If no n-expressions precede it on the line, it is called GROUP,
 and it represents no symbol at all located at that indentation.
 GROUP is useful for representing lists of lists.
+If there are any preceding n-expressions on the line,
+it is called SPLIT, and it is interpreted as
+the start of a new line at the current line&#8217;s indentation.
 Examples:
 </p>
 
@@ -698,16 +744,39 @@ let ; Demo GROUP
 <tr>
 <td align="left" valign="top">
 <pre>
+arc-if ; Emphasize logical relationships
+  fuzzy?(x)
+  \\  shave(x)
+  dry?(x)
+  \\  pour-water-on(x)
+  admire(x)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(arc-if
+  (fuzzy? x)
+    (shave x)
+  (dry? x)
+    (pour-water-on x)
+  (admire x))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
 myfunction ; Demo SPLIT
-  x: \\ xpos
-  y: \\ ypos
+  x: \\ original-x
+  y: \\ calculate-y original-y
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (myfunction
-  x: xpos
-  y: ypos)
+  x: original-x
+  y: (calculate-y original-y))
 </pre>
 </td>
 </tr>
@@ -736,9 +805,9 @@ the right-hand-side (including any child lines)
 is the last element of the list described on that
 line&#8217;s left-hand side.
 (This was inspired by the similar Haskell operator.)
-If there&#8217;s no text on the left-hand-side,
+If the left-hand-side has no datums,
 it is interpreted as an empty list
-(so the right-hand-side is put in a list).
+(putting the right-hand-side in a list).
 Examples:
 </p>
 
@@ -812,6 +881,26 @@ run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
 </pre>
 </td>
 </tr>
+<tr>
+<td align="left" valign="top">
+<pre>
+let ; Demo GROUP + SUBLIST
+  \\
+    c $ cos a
+    s $ sin a
+  body...
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(let
+  (
+    (c (cos a))
+    (s (sin a)))
+  body...)
+</pre>
+</td>
+</tr>
 </table>
 </blockquote>
 
@@ -819,10 +908,12 @@ run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
 A
 <a href="#traditional-abbreviations">leading traditional abbreviation
 (quote, comma, backquote, or comma-at)
-located after indentation, and followed by space, tab, or the end-of-line</a>,
+located at the beginning of a line (after indentation),
+and also followed by space, tab, or the end-of-line</a>,
 is interpreted as that operator applied to
 the entire sweet-expression that follows.
-Examples:
+Note that datum comments (<code>#;</code>) do the same thing.
+For example:
 </p>
 
 <blockquote>
@@ -835,13 +926,13 @@ Examples:
 <td align="left" valign="top">
 <pre>
 ' a b ; Demo abbreviations
-  ' c d e \\ 'f g h
+  c d
 </pre>
 </td>
 <td align="left" valign="top">
 <pre>
 (quote (a b
-  (quote (c d e)) ((quote f) g h)))
+  (c d)))
 </pre>
 </td>
 </tr>
@@ -855,9 +946,9 @@ and &#8220;*&gt;&#8221; surround a
 <i>collecting list</i></a>.
 This represents a list, but unlike (...), indentation processing
 continues to work, the indentation level is temporarily restarted
-at the left edge, and empty lines do not end a collecting list.
+at the left edge, and blank lines do not end a collecting list.
 Collecting lists are useful for very long lists (such as module definitions)
-because they shorten indentation and allow empty lines.
+because they shorten indentation and allow blank lines.
 They are also useful in let expressions with short variable expressions.
 The <a href="#examples">examples</a> section has longer examples;
 here are short examples:
@@ -896,15 +987,34 @@ let &lt;* x getx() \\ y gety() *&gt;
   (+ (* x x) (* y y)))
 </pre>
 </td>
+<tr>
+<td align="left" valign="top">
+<pre>
+module x . <*
+define x(a) {2 * a}
+
+define y(b) x{b - 1}
+*>
+</pre>
+</td>
+<td>
+<pre>
+(module x . (
+  (define (x a) (* 2 a))
+
+  (define (y b) (x (- b 1)))
+))
+</pre>
+</td>
 </tr>
 </table>
 </blockquote>
 
 <p>
 Note that if you want to use markers as ordinary symbols
-just surround them with curly braces.
-A <code>{$}</code> always means the symbol <code>$</code>, not the
-special marker.
+just surround them with curly braces or vertical bars.
+A <code>{$}</code> or <code>|$|</code>
+always means the symbol <code>$</code>, not the special marker.
 </p>
 
 <h2><a name="tutorial-implementation">Getting an implementation</a></h2>
@@ -990,10 +1100,8 @@ with Java action rules</a>, along with a support Java class
 The non-terminal <code>same</code> is an empty sequence;
 it acts as a comment to emphasize where there is a new
 line with unchanged indentation.
-The non-terminal <code>error</code> emphasizes certain sequences that
-are not defined by this BNF
-(an implementation <em>MAY</em> implement an extension, but if it does
-not, it <em>SHOULD</em> report an error).
+The non-terminal <code>error</code> indicates where an implementation
+<em>SHOULD</em> report an error if that position is reached.
 The sequence <code>/*empty*/</code> identifies an empty branch.
 </p>
 
@@ -1002,7 +1110,8 @@ A sweet-expression reader <em>MUST</em>
 support three modes: indentation processing, enclosed, and initial indent.
 A sweet-expression reader <em>MUST</em> start
 in indentation processing mode before it begins to read a sweet-expression.
-The reader temporarily switches to enclosed mode when it is reading inside
+The reader <em>MUST</em> temporarily switch
+to enclosed mode when it is reading inside
 any unescaped pairs of parentheses, brackets, or curly braces.
 </p>
 
@@ -1022,10 +1131,10 @@ other implementation-defined sequences.</li>
 <li>line: A sequence of 0+ non-eol characters terminated by EOL.
 A sweet-expression reader <em>MAY</em> also support a final line without
 an eol sequence.
-The character(s) in a terminating EOL
-are not considered part of the line contents.</li>
+The character(s) in EOL are not considered part of the line contents.</li>
 <li>hspace: A character that is a space (U+0020) or tab (U+0009)
 (short for &#8220;horizontal space&#8221;).</li>
+<li>blank line: A line containing only 0+ hspace characters.
 <li>indent character: A character that is a space (U+0020), tab (U+0009), or
 exclamation point &#8220;!&#8221; (U+0021).</li>
 <li>indentation: The set of all 0+ indent characters
@@ -1049,29 +1158,27 @@ value of the top of the indentation stack):
 <li>If an end-of-line sequence immediately follows the indentation
 and the indentation length is nonzero:
 <ol>
-<li type="a">If the indentation contains &#8220;!&#8221;, it is ignored;
-an implementation <em>MUST</em> consume the end-of-line sequence and
-start applying these rules again, from the beginning, with the next line.</li>
+<li type="a">If the indentation contains &#8220;!&#8221;, the line is ignored;
+an implementation <em>MUST</em> consume the line and
+reapply these rules to the next line.</li>
 <li type="a">If the indentation does not contain &#8220;!&#8221;,
-it is considered a line with no characters
-(thus indentation has zero length)
+the line is considered a blank line with zero-length indentation
 and the rest of these rules are applied.</li>
 </ol>
 </li>
 <li>If top is the empty string and the indentation length is nonzero,
 symbol <code>INITIAL_INDENT</code>
 is generated and the reader changes to initial indent mode.
-When an end-of-line sequence is reached
+When an end-of-line sequence is reached in initial indent mode,
 the mode changes back to indentation processing.
 </li>
-<li>If top is not the empty string, and
-&#8220;;&#8221; immediately follows the indentation, the line is skipped
-&mdash; with the indentation completely ignored &mdash;
-and the following line is examined instead.</li>
+<li>If &#8220;;&#8221; immediately follows the indentation, the line is ignored;
+an implementation <em>MUST</em> consume the line and
+reapply these rules to the next line.</li>
 <li>If the indentation is equal to top, no extra symbol is generated.
-The BNF identifies where this will match using the
+(The BNF identifies where this will match using the
 &#8220;same&#8221; non-terminal, but
-&#8220;same&#8221; is empty.</li>
+&#8220;same&#8221; is empty.)</li>
 <li>If the indentation is longer than top, and top is a prefix of indentation,
 the indentation is pushed onto the indentation stack
 and the symbol <code>INDENT</code> is generated.</li>
@@ -1086,13 +1193,19 @@ If no match is found, it is an error.</li>
 </ol>
 
 <p>
-The production &#8220;n_expr&#8221; is a neoteric-expression
+The production &#8220;<tt>n_expr</tt>&#8221; is a neoteric-expression
 as defined in
 <a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
 Thus <samp>{a&nbsp;+&nbsp;b}</samp> maps to <samp>(+&nbsp;a&nbsp;b)</samp>,
 <samp>f(...)</samp> maps to <samp>(f&nbsp;...)</samp>, and
 <samp>f{...}</samp> with content other than whitespace
 maps to <samp>(f&nbsp;{...})</samp>.
+The production &#8220;<tt>n_expr_first</tt>&#8221;
+matches a neoteric-expression
+that either has no leading abbreviations (such as &#8220;,@&#8221;),
+or its leading abbreviation does not have whitespace after it.
+The productions <tt>n_expr</tt> and <tt>n_expr_first</tt> <em>MUST NOT</em>
+consume trailing whitespace.
 </p>
 
 <p>
@@ -1106,8 +1219,9 @@ and when it starts with the character shown
 The markers, BNF names, and meanings are:
 </p>
 <ul>
-<li><tt>\\</tt> : GROUP_SPLIT.  This is called GROUP if it immediately follows
-indentation; otherwise it is called SPLIT.</li>
+<li><tt>\\</tt> : GROUP_SPLIT.  This is called GROUP if it occurs in
+the position of the first n-expression in a given line
+(e.g., immediately after indentation); otherwise it is called SPLIT.</li>
 <li><tt>$</tt> : SUBLIST.</li>
 <li><tt>&lt;*</tt> : COLLECTING.  Begins a &#8220;collecting list&#8221;, a
 new list that ends with a matching COLLECTING_END.
@@ -1116,8 +1230,8 @@ well as generating the symbol COLLECTING.</li>
 <li><tt>*&gt;</tt> : COLLECTING_END.
 This pops any non-empty strings from the indentation stack (generating a
 <code>DEDENT</code> for each one),
-then pops the empty string initially placed by COLLECTING,
-and then generates the two symbols EOL and finally COLLECTING_END.</li>
+pops the empty string initially placed by COLLECTING,
+and generates the two symbols EOL and COLLECTING_END.</li>
 <li><tt>$$$</tt> : RESERVED_TRIPLE_DOLLAR.  Reserved.</li>
 </ul>
 
@@ -1129,9 +1243,9 @@ that it has priority; ",@" is interpreted differently from
 
 <p>
 The following whitespace-terminated terminals <em>MUST</em> be
-recognized if and only if the reader is in indentation processing mode;
-the linefeed or carriage return (if any) in them <em>MUST NOT</em>
-be permanently consumed:
+recognized if and only if the reader is in indentation processing mode.
+The linefeed or carriage return (if any) in them <em>MUST NOT</em>
+be permanently consumed (the space or tab, if any, <em>MAY</em> be consumed):
 </p>
 <pre>
 QUOTEW          : '\'' (' ' | '\t' | '\n' | '\r') ;  // quote
@@ -1155,51 +1269,44 @@ in the same manner.
 A sweet-expression reader <em>MAY</em> implement additional abbreviations.
 </p>
 
-<p>
-An implication of these definitions is that a line with only
-0+ hspace characters (aka an &#8220;empty line&#8221;) terminates
-a sweet-expression once it has begun in the normal case,
-per the it_expr production defined below.
-</p>
-
 <h2><a name="bnf-utility">Utility procedures used in the BNF</a></h2>
 
 <p>
 The BNF depends on the following utility procedures.
 The first ones are variants of traditional list processing procedures
-but also handle a special unique &#8220;empty_tag&#8221; value,
+but also handle a special unique value &#8220;empty_value&#8221;,
 which is used to indicate when no value at all is returned.
 The &#8220;monify&#8221; procedure enables lines with a
 single n-expression and no child lines to represent themselves and
 not be wrapped into a list:
 </p>
 <pre>
-  (define (isemptytagp x) (eq? x empty_tag))
+  (define (isemptyvaluep x) (eq? x empty_value))
 
   (define (not_period_and_not_empty x)
-    (and (not (isperiodp x)) (not (isemptytagp x))))
+    (and (not (isperiodp x)) (not (isemptyvaluep x))))
 
   (define (conse x y) ; cons, but handle "empty" values
     (cond
-      ((eq? y empty-tag) x)
-      ((eq? x empty-tag) y)
+      ((eq? y empty-value) x)
+      ((eq? x empty-value) y)
       (#t (cons x y))))
 
   (define (appende x y) ; append, but handle "empty" values
     (cond
-      ((eq? y empty-tag) x)
-      ((eq? x empty-tag) y)
+      ((eq? y empty-value) x)
+      ((eq? x empty-value) y)
       (#t (append y))))
 
   (define (list1e x) ; list, but handle "empty" values
-    (if (eq? x empty-tag)
+    (if (eq? x empty-value)
         '()
         (list x)))
 
   (define (list2e x y) ; list, but handle "empty" values
-    (if (eq? x empty-tag)
+    (if (eq? x empty-value)
         y
-        (if (eq? y empty-tag)
+        (if (eq? y empty-value)
            x
            (list x y))))
 
@@ -1232,12 +1339,6 @@ SPACE    : ' ';
 TAB      : '\t';
 PERIOD   : '.';
 
-// Abbreviations not followed by horizontal space or EOL are ordinary:
-QUOTE          : '\'';
-QUASIQUOTE     : '\`';
-UNQUOTE_SPLICE : ',@';
-UNQUOTE        : ',';
-
 // Special end-of-line character definitions.
 fragment EOL_CHAR : '\n' | '\r' ;
 fragment NOT_EOL_CHAR : (~ (EOL_CHAR));
@@ -1245,8 +1346,7 @@ fragment NOT_EOL_CHARS : NOT_EOL_CHAR*;
 
 // Comments. LCOMMENT=line comment, scomment=special comment.
 LCOMMENT :       ';' NOT_EOL_CHARS ; // Line comment - doesn't include EOL
-BLOCK_COMMENT : '#|' // This is #|...|#
-      (options {greedy=false;} : (BLOCK_COMMENT | .))* '|#' ;
+BLOCK_COMMENT : '#|' (options {greedy=false;} : (BLOCK_COMMENT | .))* '|#' ;
 DATUM_COMMENT : '#;' ;
 // SRFI-105 notes that "implementations could trivially support
 // (simultaneously) markers beginning with #! followed by a letter
@@ -1264,12 +1364,12 @@ SHARP_BANG_DIRECTIVE : '#!' (('a'..'z'|'A'..'Z'|'_')
                     ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')*)? (SPACE|TAB)* ;
 
 hspace  : SPACE | TAB ;        // horizontal space
-hs      : hspace* ;
+hs      : (options {greedy=true} : hspace)* ;
 
-// This is for handling non-first n-expressions in initial indent.
+// A "separator_initial_indent" separates n-expressions in initial indent.
 // An implementation MAY implement this as "(hspace | '!')+"
 // (e.g., to avoid retaining state when returning a value).
-hspaces_maybe_bang: hspace+ ;
+separator_initial_indent: hspace+ ;
 
 // Production "abbrevw" is an abbreviation with a following whitespace:
 abbrevw returns [Object v]
@@ -1278,40 +1378,9 @@ abbrevw returns [Object v]
   | UNQUOTE_SPLICEW {'unquote-splicing}
   | UNQUOTEW        {'unquote} ;
 
-// Production "abbrev_no_w" is an abbreviation without a following whitespace:
-abbrev_no_w returns [Object v]
-  : QUOTE           {'quote}
-  | QUASIQUOTE      {'quasiquote}
-  | UNQUOTE_SPLICE  {'unquote-splicing}
-  | UNQUOTE         {'unquote};
-
-abbrev_all returns [Object v]
-  : abbrevw hs {$abbrevw}
-  | abbrev_no_w     {$abbrev_no_w} ;
-
-// Production "n_expr" is a full neoteric-expression as defined in SRFI-105.
-// n_expr does *not* consume any following horizontal space.
-// Uses "n_expr_noabbrev", an n-expression with no leading abbreviations:
-n_expr returns [Object v]
- : abbrev_all n1=n_expr {(list $abbrev_all $n1)}
- | n_expr_noabbrev      {$n_expr_noabbrev} ;
-
-// Production "n_expr_first" is a neoteric-expression, but leading
-// abbreviations cannot have an whitespace afterwards (used by "line_exprs"):
-n_expr_first returns [Object v]
-  : abbrev_no_w n1=n_expr_first {(list $abbrev_no_w $n1)}
-  | n_expr_noabbrev            {$n_expr_noabbrev} ;
-
 // Production "scomment" (special comment) defines comments other than ";":
-sharp_bang_comments : SRFI_22_COMMENT | SHARP_BANG_FILE
-                      | SHARP_BANG_DIRECTIVE ;
-scomment : BLOCK_COMMENT
-         | DATUM_COMMENT (options {greedy=true} : hspace)* n_expr
-         | sharp_bang_comments ;
-
-// Production "comment_eol" reads an optional ;-comment (if it exists),
-// and then reads the end-of-line (EOL) sequence.  EOL processing consumes
-// additional comment-only lines (if any) which may be indented.
+sharp_bang_comment : SRFI_22_COMMENT | SHARP_BANG_FILE | SHARP_BANG_DIRECTIVE ;
+scomment : BLOCK_COMMENT | DATUM_COMMENT hs n_expr | sharp_bang_comment ;
 
 comment_eol : LCOMMENT? EOL;
 
@@ -1329,24 +1398,25 @@ Here are the key BNF productions for sweet-expressions:
 
 <pre>
 // Production "collecting_content" returns a collecting list's contents.
-// Precondition: At beginning of line.
+// Precondition: After collecting start and horizontal spaces.
 // Postcondition: Consumed the matching COLLECTING_END.
 // FF = formfeed (\f aka \u000c), VT = vertical tab (\v aka \u000b)
 
 collecting_content returns [Object v]
   : it_expr more=collecting_content {(conse $it_expr $more)}
   | comment_eol    retry1=collecting_content {$retry1}
-  | INITIAL_INDENT LCOMMENT? EOL retry2=collecting_content {$retry2}
-  | (FF | VT)+ EOL retry3=collecting_content {$retry3}
+  | (FF | VT)+ EOL retry2=collecting_content {$retry2}
   | COLLECTING_END {'()} ;
+
+collecting_list returns [Object v]
+  : COLLECTING hs cc=collecting_content hs {$cc} ;
 
 // Process line after ". hspace+" sequence.  Does not go past current line.
 
 post_period returns [Object v]
   : skippable retry=post_period {$retry}
     | pn=n_expr hs skippable* (n_expr error)? {$pn}
-    | COLLECTING hs pc=collecting_content hs
-      skippable* (n_expr error)? {$pc}
+    | cl=collecting_list skippable* (n_expr error)? {$cl}
     | /*empty*/ {'.} ;
 
 // Production "line_exprs" reads the 1+ n-expressions on one line; it will
@@ -1359,9 +1429,9 @@ line_exprs returns [Object v]
   : PERIOD /* Leading ".": escape following datum like an n-expression. */
       (hspace+ pp=post_period {(list $pp)}
        | /*empty*/    {(list '.)} )
-  | COLLECTING hs collecting_content hs
-      (rr=rest_of_line    {(cons $collecting_content $rr)}
-       | /*empty*/        {(list $collecting_content)} )
+  | cl=collecting_list
+      (rr=rest_of_line    {(cons $cl $rr)}
+       | /*empty*/        {(list $cl)} )
   | basic=n_expr_first /* Only match n_expr_first */
       ((hspace+ (br=rest_of_line  {(cons $basic $br)}
                  | /*empty*/      {(list $basic)} ))
@@ -1375,9 +1445,9 @@ line_exprs returns [Object v]
 rest_of_line returns [Object v]
   : PERIOD hspace+ pp=post_period {$pp} /* Improper list */
   | skippable (retry=rest_of_line {$retry} | /*empty*/ {'()})
-  | COLLECTING hs collecting_content hs
-    (rr=rest_of_line     {(cons $collecting_content $rr)}
-     | /*empty*/         {(list $collecting_content)} )
+  | cl=collecting_list
+    (rr=rest_of_line     {(cons $cl $rr)}
+     | /*empty*/         {(list $cl)} )
   | basic=n_expr
       ((hspace+ (br=rest_of_line {(cons $basic $br)}
                  | /*empty*/     {(list $basic)} ))
@@ -1391,11 +1461,11 @@ body returns [Object v]
   : i=it_expr
      (same
        ( {(isperiodp $i)}? =&gt;   f=it_expr DEDENT {$f} // Improper list
-       | {(isemptytagp $i)}? =&gt; retry=body       {$retry}
+       | {(isemptyvaluep $i)}? =&gt; retry=body     {$retry}
        | {(not_period_and_not_empty $i)}? =&gt; nxt=body {(conse $i $nxt)} )
      | DEDENT {(list1e $i)} ) ;
 
-// Production "normal_it_expr" is an it_expr without a special prefix:
+// Production "normal_it_expr" is an it_expr without a special prefix.
 
 normal_it_expr returns [Object v] 
   : line_exprs (
@@ -1409,26 +1479,24 @@ normal_it_expr returns [Object v]
 
 datum_comment_line returns [Object v]
   : DATUM_COMMENTW hs
-    (is_i=it_expr | comment_eol INDENT body ) {empty_tag} ;
+    (is_i=it_expr | comment_eol INDENT body ) {empty_value} ;
 
 group_line returns [Object v]
   : (GROUP_SPLIT | scomment) hs /* Initial; Interpet as group */
       (group_i=it_expr {$group_i} /* Ignore initial GROUP/scomment */
        | comment_eol
          (INDENT g_body=body {$g_body} /* Normal GROUP use */
-          | same {empty_tag} )) ;
+          | /*empty*/ {empty_value} )) ;
 
 sublist_line returns [Object v] // "$" first on line
   : SUBLIST hs is_i=it_expr {(list1e $is_i)} ;
 
 abbrevw_line returns [Object v]
   : abbrevw hs
-      (comment_eol INDENT ab=body
-         {(appende (list $abbrevw) $ab)}
-       | ai=it_expr
-         {(list2e $abbrevw $ai)} ) ;
+      (comment_eol INDENT ab=body {(appende (list $abbrevw) $ab)}
+       | ai=it_expr               {(list2e $abbrevw $ai)} ) ;
 
-// Production "it_expr" (indented sweet-expressions)
+// Production "it_expr" (indenting sweet-expression)
 // is the main production for sweet-expressions in the usual case.
 // Precondition: At beginning of line after indent, NOT at an EOL char
 // Postcondition: it-expr ended by consuming EOL + examining indent
@@ -1440,35 +1508,36 @@ it_expr returns [Object v]
   | sublist_line       {$sublist_line}
   | abbrevw_line       {$abbrevw_line} ;
 
-// Production "initial" processes initial indent expresions.
+// Production "initial_indent_expr" is for an expression starting with indent.
 
-initial returns [Object v]
-  : (INITIAL_INDENT | hspaces_maybe_bang)
+initial_indent_expr returns [Object v]
+  : (INITIAL_INDENT | separator_initial_indent) (scomment hs)*
     (n_expr {$n_expr}
-     | (scomment (options {greedy=true} : hspace)*
-       sretry=t_expr_real {$sretry})
-     | comment_eol retry3=t_expr {$retry3} ) ;
+     | comment_eol {empty_value} ) ;
 
 // Production "t_expr_real" handles special cases, else it invokes it_expr.
 
 t_expr_real returns [Object v]
   : comment_eol    r1=t_expr_real {$r1} // Skip initial blank lines
   | (FF | VT)+ EOL r2=t_expr_real {$r2} // Skip initial FF|VT lines
-  | initial {$initial}
-  | EOF {(generate_eof)} // End of file
-  | i=it_expr {$i} /* Normal case */ ;
+  | EOF                           {(generate_eof)} // End of file
+  | initial_indent_expr           {$initial_indent_expr}
+  | i=it_expr                     {$i} /* Normal case */ ;
 
 // Production "t_expr" is the top-level production for sweet-expressions.
 
 t_expr returns [Object v]
   : te=t_expr_real	
-    ( {(isemptytagp $te)}? =&gt; retry=t_expr {$retry}
-      | {$te} ) ;
+      {(if (isemptyvaluep $te) (t_expr) $te)} ; retry if empty_value.
 </pre>
 
+<p>
+Note that per these definitions, a blank line normally terminates
+a sweet-expression once it has begun, but a blank line does not
+terminate a collecting list.
+</p>
 
 <h2 id="other-requirements">Other requirements</h2>
-
 
 <p>
 An implementation of this SRFI <em>MUST</em> accept
@@ -1523,13 +1592,12 @@ A sweet-expression reader <em>MAY</em> implement datum labels
 with syntax <code>#<i>number</i>=<i>datum</i></code>.
 If the first character after the equal sign is not whitespace,
 such a reader <em>SHOULD</em> read it as a neoteric-expression.
-If the first character after the equal sign is whitespace,
-a datum reader <em>MAY</em> reject it.
-A reader <em>MAY</em> also accept a datum label
-that is an initial expression of a <i>head</i> production (see the BNF),
-with a trailing space or tab,
-as labeling the rest of the sweet-expression
-(the sample implementation does not).
+If the equal sign is followed by whitespace,
+a datum reader <em>MAY</em> reject it;
+the reader <em>MAY</em> also
+consider the whole thing an <i>it_expr</i>,
+labeling the rest of the sweet-expression
+(the sample implementation does not do this).
 </p>
 
 <p>
@@ -1608,7 +1676,7 @@ that reads sweet-expressions and writes out s-expressions.
 An unsweetener <em>SHOULD</em> specially treat
 lines that begin with a semicolon
 when they are not currently reading an expression (e.g., no expression has
-been read, or the last expression read has been completed with an empty line).
+been read, or the last expression read has been completed with a blank line).
 Such a tool <em>SHOULD</em>
 (when outside an expression) copy exactly
 any line beginning with semicolon followed by a whitespace or semicolon.
@@ -1681,25 +1749,6 @@ define fibup(max count n-1 n-2)
   (if (= max count)
       (+ n-1 n-2)
       (fibup max (+ count 1) (+ n-1 n-2) n-1)))
-</pre>
-</td>
-</tr>
-
-<tr>
-<td align="left" valign="top">
-<pre>
-define factorial(n)
-  if {n &lt;= 1}
-     1
-     {n * factorial{n - 1}}
-</pre>
-</td>
-<td align="left" valign="top">
-<pre>
-(define (factorial n)
-  (if (&lt;= n 1)
-      1
-      (* n (factorial (- n 1)))))
 </pre>
 </td>
 </tr>
@@ -1880,6 +1929,19 @@ a |.| b {$} c d . .
 <pre>
 ; Presumes |...| supported
 (a |.| b |$| c d . |.|)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+$a \\b ; Not markers (not delimited)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+($a \\b)
 </pre>
 </td>
 </tr>
@@ -2582,7 +2644,7 @@ about the RTML language design</a> and <a
 href="http://lib.store.yahoo.net/lib/ytimes/rtmlintro.pdf">
 this introduction to RTML by Yahoo</a>.</li>
 <li><a href="http://www.accesscom.com/~darius/">Darius Bacon&#8217;s
-&#8221;indent&#8221; file</a>, includes his own implementation of
+&#8220;indent&#8221; file</a>, includes his own implementation of
 a Python/Haskell-like syntax for Scheme using indentation in place
 of parentheses, and in that file he also includes Paul D. Fernhout&#8217;s
 implementation of an indentation approach.  Bacon&#8217;s syntax for indenting
@@ -2619,14 +2681,14 @@ used SRFI-49 directly.</p>
 However, SRFI-49 turned out to have problems in practice when
 we tried to use it seriously.
 For example,
-in SRFI-49, leading empty lines could produce the empty list <tt>()</tt>
+in SRFI-49, leading blank lines could produce the empty list <tt>()</tt>
 instead of being ignored,
-limiting the use of empty lines and leading to easy-to-create errors.
+limiting the use of blank lines and leading to easy-to-create errors.
 As specified, a SRFI-49 expression would never complete
 until after the next expressions&#8217;s first line was entered, making
 interactive use extremely unpleasant.
-Lines with just spaces and tabs would be considered different from empty
-lines, creating another opportunity for difficult-to-find errors.
+Lines with just spaces and tabs would be considered different from
+blank lines, creating another opportunity for difficult-to-find errors.
 The symbol <tt>group</tt> is given a special meaning, which is
 inconsistent with the rest of Lisp
 (where only punctuation has special syntactic meanings).
@@ -2922,27 +2984,31 @@ sweet-expression constructs related to whitespace, indentation,
 and comment handling, including why they are defined the way they are.
 </p>
 
-<h3 id="empty-lines">Empty lines</h3>
+<h3 id="blank-lines">Blank lines</h3>
 
 <p>
-The issues of how to deal with empty lines, and how to end expressions,
+A blank line, in this specification, is a line with only 0+ spaces and/or tabs.
+They are also called &#8220;empty lines&#8221;, but this specification uses the
+term &#8220;blank line&#8221; to reduce confusion
+(the word &#8220;empty&#8221; has many other meanings).
+The issues of how to deal with blank lines, and how to end expressions,
 involves various trade-offs between use in a REPL and use in a file.
 </p>
 
 <p>
-In sweet-expressions, an empty line
+In sweet-expressions, a blank line
 always terminates a datum, once an expression has started;
-if (another) expression has not started, empty lines are ignored.
+if (another) expression has not started, blank lines are ignored.
 That means that in a REPL,
 once you&#8217;ve entered a complete expression,
 &#8220;Enter Enter&#8221; will always end it.
-The &#8220;empty lines at the beginning are ignored&#8221;
+The &#8220;blank lines at the beginning are ignored&#8221;
 rule eliminates a usability problem
 with the original SRFI-49 (I-expression) spec, in which two sequential
-empty lines before an expression surprisingly returned ().
+blank lines before an expression surprisingly returned ().
 This was a serious usability problem.
 The sample SRFI-49
-implementation <em>did</em> end expressions on an empty line - the problem
+implementation <em>did</em> end expressions on a blank line - the problem
 was that the spec didn&#8217;t clearly capture this.
 </p>
 
@@ -2963,7 +3029,7 @@ This is absurdly confusing and unacceptable.
 Early Pascal I/O had similar problems.
 </li>
 <li>It would be possible
-to have empty lines end an expression only in interactive use.
+to have blank lines end an expression only in interactive use.
 In particular, Python does this; Python
 has different rules for interactive use and files.
 However, this means that you cannot cut-and-paste text from files into
@@ -3008,13 +3074,13 @@ will be until it is done, so this does not help enough.
 </ol>
 
 <p>
-The chosen solution, where an empty line
+The chosen solution, where a blank line
 (&#8220;Enter Enter&#8221;) <em>always</em> end an expression,
 works reasonably well and keeps the notation consistent.
 Pressing Enter twice is quite easy in a REPL (since the user&#8217;s
 finger is already on Enter to press it the first time).
 Of course, people sometimes want to have something like
-an empty line in the middle of an s-expression, to vertically separate
+a blank line in the middle of an s-expression, to vertically separate
 parts of a larger expression.
 Sweet-expressions have alternatives that work quite well for this purpose:
 </p>
@@ -3022,7 +3088,7 @@ Sweet-expressions have alternatives that work quite well for this purpose:
 <li>
 The recommended solution is to use comment-only lines using &#8220;;&#8221;
 (indented or not).
-These are completely ignored and not even considered empty lines.
+These are completely ignored and not even considered blank lines.
 Thus, you can use comment-only lines for the purpose
 of separating sections in a single datum.
 The indentation of comment-only lines is intentionally ignored;
@@ -3032,7 +3098,7 @@ We&#8217;ve found that in practice this works very well.
 </li>
 <li>
 You can also use a line with at least one exclamation point, and nothing
-else other than possibly whitespace; this has the same effect.
+else other than possibly whitespace; such lines are also ignored.
 </li>
 <li>
 If you also want to disable indentation processing, placing the expression
@@ -3044,12 +3110,12 @@ a collecting list can typically be used.
 </li>
 </ol>
 
-<p>Since a line with only spaces or tabs may look exactly identical to an
-empty line, we decided to clearly state that
-a line with only spaces and tabs is an empty line
+<p>Since a line with only spaces or tabs may look exactly identical to a
+blank line, we decided to clearly state that
+a line with only spaces and tabs is a blank line
 (and is treated the same way).
 This eliminates some nasty usability problems that
-could arise if an &#8220;empty&#8221; line was interpreted differently
+could arise if a &#8220;blank&#8221; line was interpreted differently
 depending on whether or not it had invisible whitespace in it.
 A silent error like this could be hard to debug.</p>
 
@@ -3057,7 +3123,7 @@ A silent error like this could be hard to debug.</p>
 <p>
 It is not possible to see trailing horizontal space on most screens
 and printouts.
-Thus, the BNF is defined so that in most cases trailing horizontal space
+Thus, the BNF is defined so that in normal cases trailing horizontal space
 is ignored
 (except in special cases such as being inside a string constant).
 </p>
@@ -3239,7 +3305,7 @@ We&#8217;d like this reader to be a drop-in replacement for read(),
 so minimizing incompatibilities is important.</p>
 
 <p>There is a risk that this
-indentation will be accidental (e.g., a user might enter an empty line in
+indentation will be accidental (e.g., a user might enter a blank line in
 the middle of a routine and then start the next line indented).  However,
 this is less likely to happen interactively (users can typically see
 something happened immediately), and editors can easily detect and show
@@ -3449,7 +3515,7 @@ define foo(x)
           |#
 </pre>
 Again, a simple &#8220;outright delete&#8221;
-would yield an empty line
+would yield a blank line
 right after the &#8220;<code>define foo(x)</code>&#8221; line.
 Instead, what we mandate is that,
 if a block or datum comment immediately follows indentation,
@@ -3557,6 +3623,86 @@ indent replace with <code>\\</code>)
 then it was considered simpler
 to just use the same behavior for both.
 </p>
+
+<h3 id="child-is-child">Child lines producing an empty value are still child lines</h3>
+
+
+<p>
+Under the current semantics:
+</p>
+<pre>
+foo
+==&gt; foo
+
+foo
+! bar
+==&gt; (foo bar)
+</pre>
+
+<p>
+But what should be done when there are child lines, and all of them
+produce an empty value (from datum comments or block comments)?
+For example:
+</p>
+<pre>
+foo
+! #; bar
+</pre>
+
+<p>
+We have two conflicting rules: (1) a child line means that the
+parent should be wrapped in a list, but (2) comments usually are ignored.
+</p>
+
+<p>
+The current specification resolves this by picking rule #1 as
+being more important, thus, this is <tt>(foo)</tt>.
+If a line has a child line, then it&#8217;s wrapped into a list...
+even if the child lines together produce an empty value.
+</p>
+
+<p>
+The rationale is that if you comment out later lines that are
+parameters of a procedure, you probably <i>still</i> want to
+treat it as a procedure. E.G., given:
+</p>
+<pre>
+foo
+! complicated-expression 4 7
+! ! otherstuff 8
+</pre>
+
+Let&#8217;s imagine that you comment out foo&#8217;s parameters:
+<pre>
+foo
+! #; complicated-expression 4 7
+! ! otherstuff 8
+</pre>
+
+<p>
+In most cases, you probably still want &#8220;<tt>foo</tt>&#8221; to be called,
+so &#8220;<tt>(foo)</tt>&#8221;
+is probably the correct way to interpret this.
+Thus, it makes sense to simply say that &#8220;monify&#8221; is only called when
+there are no child lines. It&#8217;s an easier rule to explain, too.
+And once you accept that notion, it&#8217;s important to be consistent
+about it all the way through.
+</p>
+
+<p>
+If someone REALLY wants foo to become a single value, he
+can use line comments or a block comment so that there are no child lines:
+</p>
+<pre>
+foo #|
+; complicated-expression 4 7
+; ! otherstuff 8 |#
+
+foo #|
+! #; complicated-expression 4 7
+! ! otherstuff 8 |#
+</pre>
+
 
 <h3 id="eol">End-of-line (EOL) handling</h3>
 <p>
@@ -3730,25 +3876,28 @@ but not a procedure call, the alternative format
 &#8220;(element-value)&#8221; also seems quite clear.
 </p>
 
-<h3 id="sweet">The #!sweet marker</h3>
+<h3 id="sweet">The #!sweet directive</h3>
 
 <p>
-The marker <code>#!sweet</code> is intended to be used
-before any sweet-expressions.
+The directive <code>#!sweet</code> is intended to be used
+before any sweet-expressions in Scheme.
 This improves backwards compatibility; readers can by default
 read only traditional s-expressions, and only change when they
 receive <code>#!sweet</code>.
 Readers are allowed, but not required, to accept sweet-expressions
-before this marker.
+before this directive.
 </p>
 
 <p>
-The marker <code>#!sweet</code> was chosen as an analogy
-to similar markers, such as
+The directive <code>#!sweet</code> was chosen as an analogy
+to similar Scheme directives, such as
 <code>#!fold-case</code> and <code>#!no-fold-case</code>
 (R6RS and R7RS),
 <code>#!r6rs</code> (R6RS), and
 <code>#!curly-infix</code> (SRFI-105).
+Note that this enabling directive is specifically for Scheme;
+other Lisp notations (e.g., Common Lisp) may use
+different mechanisms to enable sweet-expression processing.
 </p>
 
 <p>
@@ -3770,7 +3919,7 @@ distinguish between (1) a list to read and
 (2) a command to change modes.
 Also, not all Scheme systems support ways to invoke SRFIs,
 or even a module system, and there are many module systems in use.
-A special marker avoids these issues.
+A special directive avoids these issues.
 </p>
 
 <p>
@@ -4062,21 +4211,26 @@ define c[i]
 </pre>
 
 <p>
-This function shows a common occurrence
+This perfectly valid sweet-expression shows two common occurrences
 in Scheme programming:
-A function that immediately begins with <code>cond</code>.
-The formatting of <code>cond</code> above, however,
-has several lines that consist of a single n-expression item
+A function that immediately begins with <code>cond</code>,
+and cond clauses with relatively short tests and tail sequences.
+The above formatting has several lines with single n-expression
 (e.g. &#8220;<code>cond</code>&#8221;, &#8220;<code>else</code>&#8221;,
-&#8220;<code>string?(c)</code>&#8221;, etc.).
+&#8220;<code>string?(c)</code>&#8221;, etc.), and
+many other lines that are fairly short.
 </p>
 
 <p>
 Vertical space is precious.
 Using SUBLIST,
-we can compress the code to:
+we can choose to compress the code to:
 </p>
 
+<table border="1" cellpadding="4">
+<tr><th>sweet-expression</th><th>s-expression</th></tr>
+<tr>
+<td>
 <pre>
 define c[i] $ cond
   vector?(c) $ vector-ref c i
@@ -4084,6 +4238,18 @@ define c[i] $ cond
   pair?(c)   $ list-ref c i
   else       $ error "Not a collection"
 </pre>
+</td>
+<td>
+<pre>
+(define ($bracket-apply$ c i) (cond
+  ((vector? c) (vector-ref c i))
+  ((string? c) (string-ref c i))
+  ((pair? c)   (list-ref c i))
+  (else        (error "Not a collection"))))
+</pre>
+</td>
+</tr>
+</table>
 
 <p>
 Arguably,
@@ -4097,17 +4263,37 @@ this idiomatic formatting of <code>cond</code> using SUBLIST
 makes possible the following code:
 </p>
 
+<table border="1" cellpadding="4">
+<tr><th>sweet-expression</th><th>s-expression</th></tr>
+<tr>
+<td align="left" valign="top">
 <pre>
 define merge(&lt; as bs) $ cond
   null?(as)           $ bs
   null?(bs)           $ as
   {car(as) &lt; car(bs)} $ cons
                          car as
-                         merge &lt; (cdr as) bs
+                         merge &lt; cdr(as) bs
   else                $ cons
                          car bs
-                         merge &lt; as (cdr bs)
+                         merge &lt; as cdr(bs)
 </pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (merge &lt; as bs) (cond
+  ((null? as)            bs)
+  ((null? bs)            as)
+  ((&lt; (car as) (car bs)) (cons
+                           (car as)
+                           (merge &lt; (cdr as) bs)))
+  (else                  (cons
+                           (car bs)
+                           (merge &lt; as (cdr bs))))))
+</pre>
+</td>
+</tr>
+</table>
 
 <p>
 Without SUBLIST, the more complex branches of the <code>cond</code>
@@ -4118,6 +4304,39 @@ or would be expressed in deeply-nested parentheses,
 defeating the purpose of using sweet-expressions.
 </p>
 
+<p>
+Another idiom that SUBLIST enables is a straightward
+let* format where variable names are followed by <code>$</code>.
+This eliminates the need to parenthesize the othermost layer of the
+variable value expressions:
+</p>
+
+<table border="1" cellpadding="4">
+<tr><th>sweet-expression</th><th>s-expression</th></tr>
+<tr>
+<td>
+<pre>
+let*
+  \\
+    asline $ line-in-collecting car(m)
+    length-asline $ length asline
+  body...
+</pre>
+</td>
+<td>
+<pre>
+(let*
+  (
+    (asline (line-in-collecting (car m)))
+    (length-asline (length asline)))
+  body...)
+</pre>
+</td>
+</tr>
+</table>
+
+
+
 <p>After discussion,
 <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00496.html">
 SUBLIST was accepted in 2012-07-23</a>.</p>
@@ -4127,7 +4346,8 @@ SUBLIST was accepted in 2012-07-23</a>.</p>
 <p>
 When initially learning SUBLIST,
 <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00562.html">
-some people assume that &#8220;a $ b&#8221; should map to &#8220;(a (b))&#8221;</a>.
+some people assume that &#8220;a $ b&#8221;
+should map to &#8220;(a (b))&#8221;</a>.
 However, the specification specifically does not
 yield this semantic; &#8220;a $ b&#8221; maps to &#8220;(a b)&#8221;.
 At first, some people think that this is an inconsistency.
@@ -4311,12 +4531,13 @@ reversible transformation:
 <tr>
 <td>
 <pre>
-:foo \\ bar
+foo \\ bar
+&nbsp;
 </pre>
 </td>
 <td>
 <pre>
-:foo
+foo
 \\  bar
 </pre>
 </td>
@@ -4398,7 +4619,7 @@ a vertical bar
 separating the elements.</p></td>
 </tr>
 <tr>
-<td>Alternative for denoting empty line</td>
+<td>Alternative for denoting a line to ignore</td>
 <td><pre>
 define foo(x)
   \\
@@ -4422,14 +4643,14 @@ users might find.
 
 <h3 id="collecting-lists">Collecting lists (&lt;* ... *&gt;)</h3>
 <p>
-Each sweet-expression is ended with an empty line, which is usually what you
+Each sweet-expression is ended with a blank line, which is usually what you
 want.  There is one circumstance where that behavior is awkward: a long
 sequence of definitions within an initial statement.
 We have developed a solution, collecting lists, that are also
 useful for 1-2 variable let-like statements.
 </p>
 <p>
-An accidental empty line between two internal definitions will end the initial
+An accidental blank line between two internal definitions will end the initial
 statement:
 </p>
 <pre>
@@ -4446,7 +4667,8 @@ define-library
     define rows(grid) vector-length(grid)
     define cols(grid) vector-length(vector-ref(grid 0))
 
-; above empty line prematurely ends define-library
+; The above blank line prematurely ends define-library, and since
+; there is an initial indent, these will be interpreted quite differently:
     define ref(grid n m)
       and
         {-1 &lt; n &lt; rows(grid)}
@@ -4455,7 +4677,7 @@ define-library
     define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
 </pre>
 <p>
-You can work around this for short sequences by removing the empty lines or
+You can work around this for short sequences by removing the blank lines or
 replacing them with one of:
 </p>
 <ol>
@@ -4473,7 +4695,7 @@ but restart indentation processing at the beginning,
 and collect any sweet-expressions inside.
 In a collecting list, horizontal spaces after the initial &lt;* are consumed,
 and then sweet-expressions are read.
-These t-expressions must not be indented
+These t-expressions must not begin with an indent
 (though you can indent lines with only ;-comments).
 </p>
 
@@ -4518,7 +4740,7 @@ Opening a parentheses intentionally disables indentation processing;
 this is what developers typically expect (note that both Python and
 SRFI-49 do this), and it also makes sweet-expressions very
 backwards-compatible with traditional s-expressions.
-Ending a definition at an empty line is very convenient for interactive use,
+Ending a definition at a blank line is very convenient for interactive use,
 and interactive and file notation should be identical
 (since people often switch between them).
 </p>
@@ -4655,7 +4877,7 @@ let &lt;* x 5 \\ y 7 *&gt;
 It seems prudent to have a symbol available for future expansion.
 Thus, the marker <tt>$$$</tt> is reserved for future use.
 This means that <tt>$$$</tt>
-must be escaped (e.g., using {...}) if it is used in an
+must be escaped (e.g., {$$$} or |$$$|) if it is used in an
 indentation-processing context.
 </p>
 
@@ -5813,7 +6035,7 @@ class example:
 In wisp, expressions do not end on blank lines, and
 this could cause significant problems in interactive use.
 Wisp&#8217;s creator said on 2013-04-16,
-&#8220;Not breaking at an empty line is a design choice,
+&#8220;Not breaking at an empty [aka blank] line is a design choice,
 because I tend to often use empty lines
 in python-code to separate logical parts of a function.
 But this actually creates problems when pasting a python
@@ -5822,7 +6044,7 @@ Note, though, that there is no interactive wisp shell (yet).
 I think I would end a statement at 2 empty lines,
 which would mean that you <i>should not</i> use
 2 consecutive empty lines in a script (but you could).&#8221;
-Using two empty lines is a plausible alternative, but note that this makes
+Using two blank lines is a plausible alternative, but note that this makes
 interactive use less appealing; users would actually have to press
 Enter three times (once to end a line, and twice more to create
 two blank lines).
@@ -5966,7 +6188,7 @@ traditional Lisp.
 For example, here is a wisp expression:
 <blockquote>
 <pre>
-  if condition? ; wisp
+  if condition?   ; wisp example
     . #t
     . #f
 </pre>
@@ -5974,7 +6196,7 @@ For example, here is a wisp expression:
 The same could be expressed using sweet-expressions as:
 <blockquote>
 <pre>
-  if condition? ; sweet-expressions
+  if condition?   ; sweet-expressions example
     #t
     #f
 </pre>
@@ -6014,7 +6236,18 @@ E.G., this sweet-expression:
 
 <pre>
   define me()
-    you now \\ others now \\ others past
+    you now
+    others now
+    others past
+    '()
+</pre>
+
+<p>
+Can also be written in sweet-expressions to conserve vertical space as:
+</p>
+<pre>
+  define me()
+    you now \\ others now \\ others past \\ '()
 </pre>
   
 <p>
@@ -6027,6 +6260,7 @@ a longer format such as:
     you now
     others now
     others past
+    . '()
 </pre>
   
 <p>
@@ -6523,7 +6757,7 @@ it_expr returns [Object v]
         | comment_eol indent sub_b=body
           ( re_indent partial_out=body
              {(append (append $head (list $sub_b)) $partial_out)}
-           | empty {(append $head (list $sub_b))} ) )
+           | /*empty*/ {(append $head (list $sub_b))} ) )
   ...
   | SUBLIST hspace* /* "$" first on line */
     (is_i=it_expr {(list $is_i)}
@@ -6546,11 +6780,8 @@ I suspect there may be further use cases; but I
 haven&#8217;t found any others yet.&#8221;
 </p>
 <p>
-The current notation does not support either approach at this time.
-However, the BNF specifically requires that these constructs be
-detected and forbidden; that way, if future versions add these capabilities,
-it will be known that they cannot have any other meaning in
-existing sweet-expressions.
+The current notation does not support either approach at this time;
+a future version could add these capabilities.
 </p>
 
 <h2 id="experience">Experience using and implementing sweet-expressions</h2>
@@ -6628,25 +6859,15 @@ easy-to-read sweet-expressions, based on the
 Readable project style guide</a>.
 </p>
 
-<h3>General Guidance</h3>
+<h3>Use indentation for major program/data structure</h3>
 
 <p>
-Mentally, this is pretty straightforward - on each line, write an
-expression; everything after the first term on the line, or all child
-lines, are parameters of the first term.
-You can use grouping operators (), [ ], and { } to put
-subexpressions on the same line, if you want.
-Use -( ... ) to negate something.
-</p>
-
-<p>
-Whenever you have an infix expression, just surround it with {...}.
-You can use the form f(...) to call a function; if it has zero parameters,
-express it as f(), and if it has more than one parameter, separate the
-parameters with spaces.
-The f(...) form is especially handy for creating
-short expressions as a parameter on a line;
-for long expressions, use indentation instead.
+In general, use indentation to make it easy to see the larger-scale
+structure of a program or data. Typically major structural atoms should
+start a new line, including defining a new term
+(e.g., &#8220;define&#8221; and &#8220;let&#8221;),
+conditionals (e.g., &#8220;if&#8221; and &#8220;cond&#8221;),
+and loops (e.g., &#8220;loop&#8221;).
 </p>
 
 <h3>Use infix notation</h3>
@@ -6671,28 +6892,14 @@ This situation can often occur with &#8220;and&#8221; and &#8220;or&#8221;
 if you&#8217;re using a functional programming style.
 </p>
 
-<h3>Use indentation for major program/data structure</h3>
-
-<p>
-In general, use indentation to make it easy to see the larger-scale
-structure of a program or data. Typically major structural atoms should
-start a new line, including defining a new term
-(e.g., &#8220;define&#8221; and &#8220;let&#8221;),
-conditionals (e.g., &#8220;if&#8221; and &#8220;cond&#8221;),
-and loops (e.g., &#8220;loop&#8221;).
-</p>
-
 <h3>Use function call notation for parameters if they fit in a line</h3>
 
 <p>
-When calling a function, if the parameters will fit easily on a line if
-you use function notation like f(x y(z)), then put them all on a line.
-When you&#8217;re calling a function with no parameters, use function-calling
+If parameters will easily fit on a line if
+you use function notation such as y(z), then use it.
+When you&#8217;re calling a procedure with no parameters, use function call
 format with &#8220;()&#8221; at the end, e.g., &#8220;f()&#8221;.
-In general, indentation is used for the major &#8220;structural&#8221; elements
-of a program, and function calls get used once you&#8217;re
-&#8220;near the leaf&#8221;
-of structure (where you won&#8217;t go beyond the end of the line).
+Use -( ... ) to negate something.
 </p>
 
 <p>
@@ -6700,12 +6907,18 @@ If you are providing a list of data (and not performing a function/method
 call), then use the traditional list notation such as
 &#8220;(a&nbsp;b&nbsp;c)&#8221;.
 This is exactly equivalent to &#8220;a(b&nbsp;c)&#8221;,
-but expressing it as a list will give
-the human reader a hint that this data is not considered a potential
-program. If it&#8217;s used as both data and as program, then consider it a
+but expressing it as a list will give the human reader
+a hint that this data is not considered a potential program.
+If it&#8217;s used as both data and as program, then consider it a
 program, and use function call notation.
 </p>
 
+<p>
+In general, indentation is used for the major &#8220;structural&#8221; elements
+of a program, and function calls get used once you&#8217;re
+&#8220;near the leaf&#8221;
+of structure (where you won&#8217;t go beyond the end of the line).
+</p>
 
 <h3>Avoid unnecessary parentheses</h3>
 
@@ -6717,7 +6930,7 @@ state the function followed by space-separated parameters.
 </p>
 
 <p>
-Both SUBLIST (<code>$</code>) and SPLIT (inline <code>\\</code>)
+Both SUBLIST (<code>$</code>) and GROUP/SPLIT (inline <code>\\</code>)
 allow some limited freedom in laying out the program text
 without disabling indentation processing; feel free to use them.
 For example, in a
@@ -6755,14 +6968,6 @@ define func-w/return(a) $ call/cc $ lambda (return)
   body ... return(whatever) ...
 </pre>
 
-
-<h3>Width</h3>
-
-<p>
-You should probably stick to an 80-character width for program text.
-</p>
-
-
 <h3>Indentation</h3>
 <p>
 Use a consistent amount of indenting for each level.
@@ -6783,6 +6988,12 @@ the next line; the &#8220;!&#8221; is <i>not</i>
 an indent character inside parentheses, braces, or brackets.
 </p>
 
+<h3>Width</h3>
+
+<p>
+You should probably stick to an 80-character width for program text.
+</p>
+
 <!-- See original page for "notes about cond", etc. -->
 
 
@@ -6792,7 +7003,7 @@ an indent character inside parentheses, braces, or brackets.
 Scheme provides no standard mechanism to override the built-in reader.
 An implementation that complies with this SRFI must
 at least activate this behavior
-when they read the <code>#!sweet</code> marker
+when they read the <code>#!sweet</code> directive
 followed by whitespace.
 </p>
 <p>The reference implementation is SRFI type 2: &#8220;A
@@ -6801,9 +7012,28 @@ some Scheme interpreter/compiler. In this case, a detailed
 specification of the hooks must be included so that the SRFI is
 self-contained.&#8221;</p>
 <p>
-See 
+The reference implementation includes
+an entire reader re-implementation that supports SRFI-105, as well as
+headings to improve its portability among Scheme implementations.
+Thus, it can be directly used to implement sweet-expressions.
+</p>
+<p>
+This reference implementation never needs to unread characters.
+It was written this way for portability, because there is no
+standard Scheme procedure for unreading characters.
+A sweet-expression implementation could be simpler if its underlying platform
+(e.g., a typical text editor) supported multi-character unread.
+For example, multi-character unread simplifies
+comparing indent levels, as well as looking after the <code>#</code>
+to determine what follows it (e.g., if it is <code>#;</code>, and if it is,
+whether or not it is followed by whitespace).
+That said, note that sweet-expressions do not
+<i>require</i> multi-character unread for a fully-correct implementation.
+</p>
+<p>
+<b>See
 <a href="kernel.scm">the Scheme source code
-for the reference implementation</a>.
+for the reference implementation</a></b>.
 </p>
 
 <h1><a name="references">References</a></h1>
