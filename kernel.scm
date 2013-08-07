@@ -725,6 +725,8 @@
     (display "Error: " (current-error-port))
     (display message (current-error-port))
     (newline (current-error-port))
+    ; Guile extension to flush output on stderr
+    (force-output (current-error-port))
     ; Guile extension, but many Schemes have exceptions
     (throw 'readable)
     '())
@@ -1560,7 +1562,7 @@
               ((and (eq? expr '*>) (eqv? c #\*))
                 (list 'collecting-end '()))
               ((and (eq? expr '$$$) (eqv? c #\$))
-                (read-error "Error - $$$ is reserved"))
+                (read-error "$$$ is reserved"))
               ((and (eq? expr period-symbol) (eqv? c #\.))
                 (list 'period-marker '()))
               (#t
@@ -1636,7 +1638,7 @@
         (begin
           (n-expr port)
           (hspaces port))
-        (read-error "Datum comment not followed a datum (EOL instead)")))
+        (read-error "Datum comment start not followed a datum (EOL instead)")))
     (#t (read-error "skippable: Impossible case"))))
 
   ; Utility declarations and functions
@@ -1877,7 +1879,7 @@
                       (list body-new-indent (my-append line-value body-value)))
                     (list new-indent (monify line-value)))))
             (#t
-              (read-error "Must end line with end-of-line sequence")))
+              (read-error "Unexpected text after n-expression")))
           ; line-exprs begins with something special like GROUP-SPLIT:
           (cond
             ((eq? line-stopper 'datum-commentw)
@@ -1969,6 +1971,8 @@
           (t-expr-real port))
         ((or (eqv? c form-feed) (eqv? c vertical-tab))
           (consume-ff-vt port)
+          (if (not (lcomment-eol? (my-peek-char port)))
+              (read-error "FF and VT must be alone on line in a sweet-expr"))
           (t-expr-real port))
         ((char-ichar? c) ; initial-indent-expr
           (accumulate-ichar port) ; consume and throw away ichars
@@ -1987,14 +1991,20 @@
           (t-expr port)
           te)))
 
-  ; Skip until we find a completely blank line (not even initial space/tab).
+  ; Skip until we find a line with 0 indent characters.
   ; We use this after read error to resync to good input.
-  (define (read-to-blank-line port)
-    (consume-to-eol port)
-    (consume-end-of-line port)
+  (define (read-to-unindented-line port)
     (let* ((c (my-peek-char port)))
-      (if (not (or (eof-object? c) (char-line-ending? c)))
-        (read-to-blank-line port))))
+      (cond
+        ((eof-object? c) c)
+        ((char-line-ending? c)
+          (consume-end-of-line port)
+          (if (char-ichar? (my-peek-char port))
+            (read-to-unindented-line port)))
+        (#t
+          (consume-to-eol port)
+          (consume-end-of-line port)
+          (read-to-unindented-line port)))))
 
   ; Call on sweet-expression reader - use guile's nonstandard catch/throw
   ; so that errors will force a restart.
@@ -2005,7 +2015,7 @@
 
     (catch 'readable
       (lambda () (t-expr port))
-      (lambda (key . args) (read-to-blank-line port) (t-expr-catch port))))
+      (lambda (key . args) (read-to-unindented-line port) (t-expr-catch port))))
 
 ; -----------------------------------------------------------------------------
 ; Write routines

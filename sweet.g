@@ -488,9 +488,9 @@ start : t_expr
 // LEXER SECTION.
 // Lexical token (terminal) names are in all upper case
 
-// INCLUDE IN SRFI
 SPACE    : ' ';
 TAB      : '\t';
+// INCLUDE IN SRFI
 PERIOD   : '.';
 // STOP INCLUDING IN SRFI
 
@@ -538,31 +538,30 @@ QUASIQUOTE     : '\`';
 UNQUOTE_SPLICE : ',@';
 UNQUOTE        : ',';
 
-// INCLUDE IN SRFI
 
-// Special end-of-line character definitions.
 fragment EOL_CHAR : '\n' | '\r' ;
 fragment NOT_EOL_CHAR : (~ (EOL_CHAR));
 fragment NOT_EOL_CHARS : NOT_EOL_CHAR*;
+// INCLUDE IN SRFI
 
 // Comments. LCOMMENT=line comment, scomment=special comment.
-LCOMMENT :       ';' NOT_EOL_CHARS ; // Line comment - doesn't include EOL
+// SRFI_22_COMMENT and SHARP_BANG_FILE support is RECOMMENDED.
+LCOMMENT      : ';' NOT_EOL_CHARS ; // Line comment - doesn't include EOL
 BLOCK_COMMENT : '#|' (options {greedy=false;} : (BLOCK_COMMENT | .))* '|#' ;
 DATUM_COMMENT : '#;' ;
+// STOP INCLUDING IN SRFI
 // SRFI-105 notes that "implementations could trivially support
 // (simultaneously) markers beginning with #! followed by a letter
 // (such as the one to identify support for curly-infix-expressions),
 // the SRFI-22 #!+space marker as an ignored line, and the
 // format #!/ ... !# and #!. ... !# as a multi-line comment."
 // We'll implement that approach for maximum flexibility.
-SRFI_22_COMMENT : '#! ' NOT_EOL_CHARS ;
-SHARP_BANG_FILE : '#!' ('/' | '.') (options {greedy=false;} : .)*
-                  '!#' (SPACE|TAB)* ;
-// These match #!fold-case, #!no-fold-case, #!sweet, and #!curly-infix;
-// it also matches a lone "#!".  The "#!"+space case is handled above,
-// in SRFI_22_COMMENT, overriding this one:
-SHARP_BANG_DIRECTIVE : '#!' (('a'..'z'|'A'..'Z'|'_')
-                    ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')*)? (SPACE|TAB)* ;
+// INCLUDE IN SRFI
+SRFI_22_COMMENT : '#!' SPACE NOT_EOL_CHARS ;
+SHARP_BANG_FILE : '#!' ('/' | '.') (options {greedy=false;} : .)* '!#' ;
+// These match #!fold-case, #!no-fold-case, #!sweet, and #!curly-infix:
+SHARP_BANG_DIRECTIVE : '#!' ('a'..'z'|'A'..'Z'|'_')
+                       ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')* ;
 
 // STOP INCLUDING IN SRFI
 
@@ -1023,8 +1022,8 @@ n_expr_noabbrev returns [Object v]
       n_expr_tail[$n_expr_prefix.v] {$v = $n_expr_tail.v;} ;
 
 
-// INCLUDE IN SRFI
 hspace  : SPACE | TAB ;        // horizontal space
+// INCLUDE IN SRFI
 hs      : (options {greedy=true;} : hspace)* ;
 
 // A "separator_initial_indent" separates n-expressions in initial indent.
@@ -1263,8 +1262,8 @@ initial_indent_expr returns [Object v]
 // INCLUDE IN SRFI
 
 t_expr_real returns [Object v]
-  : comment_eol    r1=t_expr_real {$v=$r1.v;} // Skip initial blank lines
-  | (FF | VT)+ EOL r2=t_expr_real {$v=$r2.v;} // Skip initial FF|VT lines
+  : comment_eol    retry1=t_expr_real {$v=$retry1.v;} // Skip initial blank lines
+  | (FF | VT)+ EOL retry2=t_expr_real {$v=$retry2.v;} // Skip initial FF|VT lines
   | EOF                           {generate_eof();} // End of file
   | initial_indent_expr           {$v=$initial_indent_expr.v;}
   | i=it_expr                     {$v=$i.v;} /* Normal case */ ;
