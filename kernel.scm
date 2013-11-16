@@ -659,9 +659,9 @@
         (set! common-lisp #t) #t)
       ((eq? mode 'literal-barred-symbol)
         (set! literal-barred-symbol #t) #t)
-      ((eq? 'fold-case)
+      ((eq? mode 'fold-case)
         (set! is-foldcase #t) #t)
-      ((eq? 'no-fold-case)
+      ((eq? mode 'no-fold-case)
         (set! is-foldcase #f) #t)
       (#t (display "Warning: Unknown mode") #f)))
 
