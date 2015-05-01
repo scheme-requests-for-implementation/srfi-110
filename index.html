@@ -1,7 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
 <html>
   <head>
-    <title>SRFI 110: Sweet-expressions (t-expressions)</title>
+    <title>Sweet-expressions (t-expressions)</title>
+    <link href="../../admin.css" rel="stylesheet">
   </head>
 
   <body>
@@ -14,22 +15,24 @@
       <li><a href="post-mail-archive/maillist.html">Post-Finalization Discussion Archive</a></li>
     </menu>
 
-    <p></p>
+    <p>status: final</p>
 
-    Join the post-finalization discussion by sending mail with a 
-    "<code>subscribe</code>" subject line to
+    <form class="subscription" method="POST" action="http://www.simplelists.com/subscribe.php">
+      <input type="email" name="email" placeholder="Your email address">
+      <input type="text" name="name" placeholder="Your full name">
+      Daily digest:&nbsp;<input type="checkbox" name="digest" value=" digest">
+      <input class="submit" type="submit" name="submit" value="Subscribe to srfi-110">
+      <input type="hidden" name="action" value="subscribe">
+      <input type="hidden" name="list" value="srfi-110@srfi.simplelists.com"></form>
 
-    <p></p>
+    <form class="subscription" method="POST" action="http://www.simplelists.com/subscribe.php">
+      <input type="email" name="email" placeholder="Your email address">
+      <input class="submit" type="submit" name="submit" value="Unsubscribe from srfi-110">
+      <input type="hidden" name="action" value="unsubscribe">
+      <input type="hidden" name="list" value="srfi-110@srfi.simplelists.com"></form>
 
-    <a href="mailto:srfi minus 110 minus request at srfi dot schemers dot org"><code>srfi-110 minus request at srfi dot schemers dot org</code></a>
-
-    <p></p>
-
-    Post to the post-finalization discussion list by sending mail to
-
-    <p></p>
-
-    <a href="mailto:srfi minus 110 at srfi dot schemers dot org"><tt>srfi minus 110 at srfi dot schemers dot org</tt></a>
+    <p>Post to the post-finalization discussion list by sending mail
+      to <code>srfi-110@<span class="antispam">nospam</span>srfi.schemers.org</code>.</p>
 
     <hr>
     <address><a href="mailto:srfi minus editors at srfi dot schemers dot org">The SRFI Editors</a></address>
