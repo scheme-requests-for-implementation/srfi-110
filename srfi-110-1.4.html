@@ -1,0 +1,5006 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+<title>SRFI 110: Sweet-expressions (t-expressions)</title>
+<meta content="text/html; charset=us-ascii" http-equiv="content-type">
+<!-- This commented out text is for the brittle SRFI tools -->
+<!--
+</head>
+<body>
+<H1>Title</H1>
+
+Sweet-expressions (t-expressions)
+
+<H1>Author</H1>
+
+David A. Wheeler, Alan Manuel K. Gloria
+
+<H1>Status</H1>
+
+This SRFI is currently in ``draft'' status.
+-->
+<meta name="description" content="This defines sweet-expressions (t-expressions) for Scheme, building on neoteric-expressions (n-expressions) and curly-infix-expressions (c-expressions). This defines an approach to making Scheme more 'readable' by adding syntactically-relevant indentation, as well as supporting infix and functions whose names precede the opening parenthesis.">
+<meta name="keywords" content="sweet, sweet-expression, sweet-expressions, t-expression, Scheme, Lisp, Common Lisp, neoteric-expression, n-expression, readable, notation, s-expression, s-expr, M-expressions, SRFI, implementation, David Wheeler, David A. Wheeler, Alan Manuel Gloria, Alan Manuel K. Gloria">
+<meta name="generator" content="vim">
+<!-- Copy CSS style of SRFI-64; credits to Per Bothner. -->
+<!-- Note: "style" isn't in HTML 3.2, but SRFI-64 set a precedent
+     for allowing this: -->
+<style type="text/css">
+  div.title h1 { font-size: small; color: blue }
+  div.title { font-size: xx-large; color: blue; font-weight: bold }
+  h1 { font-size: x-large; color: blue }
+  h2 { font-size: large; color: blue }
+  h3 { color: blue ; font-style: italic }
+  /* So var inside pre gets same font as var in paragraphs. */
+  var { font-family: monospace; }
+</style>
+</head>
+
+<body>
+<div class="title">
+<h1><a name="title">Title</a></h1>
+<p>Sweet-expressions (t-expressions)</p>
+</div>
+
+<!-- Some old browsers have problem with empty names. Work around here: -->
+<h1><a name="authors">Authors</a><a name="author">&nbsp;</a></h1>
+<p><a href="http://www.dwheeler.com">David A. Wheeler</a></p>
+<p>Alan Manuel K. Gloria</p>
+
+<h1 id="status">Status</h1>
+<p>
+This SRFI is currently in &#8220;draft&#8221; status.  To see an explanation of
+each status that a SRFI can hold, see <a
+href="http://srfi.schemers.org/srfi-process.html">here</a>.
+
+To provide input on this SRFI, please
+<a href="mailto:srfi minus 110 at srfi dot schemers dot org">mail to
+<code>&lt;srfi minus 110 at srfi dot schemers dot org&gt;</code></a>.  See
+<a href="../../srfi-list-subscribe.html">instructions here</a> to
+subscribe to the list.  You can access previous messages via
+<a href="mail-archive/maillist.html">the archive of the mailing list</a>.
+</p>
+
+<ul>
+      <li>
+      <li>Received: <a href="srfi-110-1.1.html">2013/03/05</a></li>
+      <li>Revised: <a href="srfi-110-1.2.html">2013/03/07</a></li>
+      <li>Revised: <a href="srfi-110-1.3.html">2013/03/10</a></li>
+      <li>Revised: <a href="srfi-110-1.4.html">2013/03/14</a></li>
+      <li>Draft: 2013/03/06-2013/05/06</li>
+      </ul>
+<p>
+This SRFI contains all the required sections, including
+an <a href="#abstract">abstract</a>,
+<a href="#rationale">rationale</a>,
+<a href="#specification">specification</a>,
+<a href="#design-rationale">design rationale</a>,
+and
+<a href="#reference-implementation">reference implementation</a>.
+</p>
+
+<h1><a name="abstract">Abstract</a></h1>
+<p>
+This SRFI describes a new extended syntax for Scheme, called sweet-expressions
+(t-expressions), that has the same descriptive power as s-expressions
+but is designed to be easier for humans to read.
+The sweet-expression syntax enables the use of syntactically-meaningful
+indentation to group expressions (similar to Python),
+and it builds on the infix and traditional function notation defined in
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105 (curly-infix-expressions)</a>.
+Unlike nearly all past efforts to improve s-expression readability,
+sweet-expressions are
+general (the notation is independent from any underlying semantic)
+and homoiconic (the underlying data structure is clear from the syntax).
+Sweet-expressions can be used both for program and data input.
+This notation was developed by the
+&#8220;<a href="http://readable.sourceforge.net/">Readable Lisp S-expressions Project</a>&#8221;.
+</p>
+<p>
+Sweet-expressions can be considered simply
+a set of some additional abbreviations.
+Sweet-expressions and traditionally formatted s-expressions
+can be freely mixed, allowing the developer
+to easily transition and maximize readability when laying out code.
+For example, a sweet-expression reader would accept
+<i>either</i> the sweet-expression or s-expression format shown below.
+Here is an example:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>sweet-expression</th><th>s-expression</th></tr>
+<tr>
+<td>
+<pre>
+define factorial(n)
+  if {n &lt;= 1}
+    1
+    {n * factorial{n - 1}}
+</pre>
+</td>
+<td>
+<pre>
+(define (factorial n)
+  (if (&lt;= n 1)
+    1
+    (* n (factorial (- n 1)))))
+</pre>
+</td>
+</tr>
+</table>
+
+
+
+
+<!-- SRFI-97 has a TOC; we think a TOC would be helpful here too. -->
+<h1><a name="toc">Table of Contents</a></h1>
+<ul>
+<li><a href="#related-srfis">Related SRFIs</a></li>
+<li><a href="#rationale">Rationale</a></li>
+<li><a href="#specification">Specification</a>
+  <ul>
+  <li><a href="#basic-specification">Basic specification</a></li>
+  <li><a href="#related-tools">Related tools</a></li>
+  <li><a href="#bnf">Backus&#45;Naur Form (BNF)</a></li>
+  </ul></li>
+<li><a href="#examples">Examples</a></li>
+<li><a href="#design-rationale">Design Rationale</a>
+  <ul>
+  <li><a href="#basic">Basic approach</a>
+  <ul>
+  <li><a href="#general-and-homoiconic">General and homoiconic formats</a></li>
+  <li><a href="#cant-improve">Is it impossible to improve on s-expression notation?</a></li>
+  <li><a href="#why-indent">Why should indentation be syntactically relevant?</a></li>
+  <li><a href="#srfi-49">What is the relationship between sweet-expressions and SRFI-49 (I-expressions)?</a></li>
+  <li><a href="#separate-105">Why are sweet-expression separate from curly-infix and neoteric-expressions as defined in SRFI-105?</a></li>
+  <li><a href="#writing-out-results">Writing out results</a></li>
+  <li><a href="#backwards-compatibility">Backwards compatibility</a></li>
+  </ul>
+  </li>
+  <li><a href="#whitespace-indentation-comment">Whitespace, indentation, and comment handling</a>
+  <ul>
+  <li><a href="#blank-lines">Blank lines</a></li>
+  <li><a href="#trailing-hspace">Trailing horizontal spaces are ignored</a></li>
+  <li><a href="#indentation-characters">Indentation characters (! as indent)</a></li>
+  <li><a href="#disabling-indentation-processing-with-paired-characters">Disabling indentation processing with paired characters</a></li>
+  <li><a href="#disabling-indentation-processing-with-an-initial-indent">Disabling indentation processing with an initial indent</a></li>
+  <li><a href="#block-comment-indent-significant">Why are the indentations of block comments and datum comments significant?</a></li>
+  <li><a href="#eol">End-of-line (EOL) handling</a></li>
+  <li><a href="#eof">End-of-file (EOF) handling</a></li>
+  <li><a href="#semicolon">Special semicolon values for an unsweetener</a></li>
+  </ul>
+  </li>
+  <li><a href="#specific-constructs">Other specific sweet-expression constructs</a>
+  <ul>
+  <li><a href="#sweet">The #!sweet marker</a></li>
+  <li><a href="#grouping-and-splitting">Grouping and splitting (\\)</a></li>
+  <li><a href="#initial-group-mean-nothing">Why does initial \\ mean nothing if there are datums afterwards on the same line?</a></li>
+  <li><a href="#traditional-abbreviations">Traditional abbreviations</a></li>
+  <li><a href="#sublist">Sublist ($)</a></li>
+  <li><a href="#single-item-sublist">Why is <code>a $ b</code> equivalent to <code>(a b)</code> rather than <code>(a (b))</code>?</a></li>
+  <li><a href="#collecting-lists">Collecting lists (&lt;* ... *&gt;)</a></li>
+  <li><a href="#reserved">Reserved marker ($$$)</a></li>
+  </ul>
+  </li>
+  <li><a href="#comparisons">Comparisons to other notations</a>
+  <ul>
+  <li><a href="#m-expressions">Comparison to M-expressions</a></li>
+  <li><a href="#honu">Comparison to Honu</a></li>
+  <li><a href="#q2">Comparison to Q2</a></li>
+  <li><a href="#p4p">Comparison to P4P</a></li>
+  <li><a href="#z">Comparison to Z</a></li>
+  <li><a href="#genyris">Comparison to Genyris</a></li>
+  <li><a href="#arne">Comparison to &#8220;Arne formulation&#8221;</a></li>
+  <li><a href="#closing-sublist-unmatched-dedent">Closing SUBLIST by unmatched dedent (&#8220;Beni Formulation of SUBLIST&#8221)</a></li>
+  <li><a href="#closing-ending-sublist-results">Variation: Closing end-of-line SUBLIST by unmatched dedent (&#8220;Beni-Lite&#8221;)</a></li>
+  </ul>
+  </li>
+  <li><a href="#experience">Experience using and implementing sweet-expressions</a></li>
+  <li><a href="#style">Style guide</a></li>
+  </ul></li>
+<li><a href="#reference-implementation">Reference implementation</a></li>
+<li><a href="#references">References</a></li>
+<li><a href="#acknowledgments">Acknowledgments</a></li>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+
+<h1><a name="related-srfis">Related SRFIs</a></h1>
+<p>
+<a href="http://srfi.schemers.org/srfi-49/">SRFI-49
+(Indentation-sensitive syntax)</a> (superceded by this SRFI),
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105
+(Curly-infix-expressions)</a> (incorporated by this SRFI),
+<a href="http://srfi.schemers.org/srfi-22/">SRFI-22
+(Running Scheme Scripts on Unix)</a> (some interactions),
+<a href="http://srfi.schemers.org/srfi-30/">SRFI-30
+(Nested Multi-line comments)</a> (some interactions),
+and
+<a href="http://srfi.schemers.org/srfi-62/">SRFI-62
+(S-expression comments)</a> (some interactions)
+</p>
+
+<h1><a name="rationale">Rationale</a></h1>
+<p>
+Many software developers find Lisp s-expression notation inconvenient and
+unpleasant to read.
+In fact, the large number of parentheses required by traditional
+Lisp s-expression syntax is the butt
+of many jokes in the software development community.
+The <a href="http://www.catb.org/jargon/html/L/LISP.html">Jargon File</a>
+says that Lisp is &#8220;mythically from
+&#8216;Lots of Irritating Superfluous Parentheses&#8217;&#8221;.
+<a href="http://fortunes.cat-v.org/kernelnewbies/">Linus Torvalds</a>
+commented about some parentheses-rich C code,
+&#8220;don&#8217;t ask me about the extraneous parenthesis.  I bet some
+LISP programmer felt alone and decided to make it a bit more homey.&#8221;
+<a href="http://www.linuxjournal.com/article/2070">
+Larry Wall, the creator of Perl</a>, says that,
+&#8220;Lisp has all the visual appeal of oatmeal
+with fingernail clippings mixed in.
+(Other than that, it&#8217;s quite a nice language.)&#8221;.
+<a href="http://shriram.github.com/p4p/">Shriram Krishnamurthi</a> says,
+&#8220;Racket [(a Scheme implementation)] has an excellent language design,
+a great implementation, a superb programming environment, and terrific tools.
+Mainstream adoption will, however, always be curtailed by the syntax.
+Racket could benefit from [reducing]
+the layers of parenthetical adipose that [needlessly] engird it.&#8221;
+</p>
+
+<p>
+Even <a href="http://paulgraham.com/popular.html">Lisp advocate
+Paul Graham says</a>, regarding Lisp syntax,
+&#8220;A more serious problem [in Lisp] is the diffuseness of prefix notation...
+We can get rid of (or make optional) a lot of parentheses by making
+indentation significant.
+That&#8217;s how programmers read code anyway: when indentation says
+one thing and delimiters say another, we go by the indentation.
+Treating indentation as significant would eliminate this
+common source of bugs as well as making programs shorter.
+Sometimes infix syntax is easier to read. This is especially true for
+math expressions. I&#8217;ve used Lisp my whole programming life and I still
+don&#8217;t find prefix math expressions natural...
+I don&#8217;t think we should be religiously opposed to introducing syntax
+into Lisp, as long as it translates in a well-understood
+way into underlying s-expressions.
+There is already a good deal of syntax in Lisp.
+It&#8217;s not necessarily bad to introduce more,
+as long as no one is forced to use it.&#8221;
+</p>
+
+<p>
+Many new syntaxes have been invented for various Lisp dialects,
+including <a href="#m-expressions">McCarthy&#8217;s
+original M-expression notation for Lisp</a>.
+However, nearly all of these past notations fail to be
+general (i.e., the notation is independent of an underlying semantic) or
+homoiconic (i.e., the underlying data structure is clear from the syntax).
+We believe a Lisp-based notation <i>needs</i> to be general and homoiconic.
+For example, Lisp-based languages can trivially create new semantic constructs
+(e.g., with macros) or be used to process other constructs;
+a Lisp notation that is not general will always lag behind and lack
+the &#8220;full&#8221; power of s-expressions.
+</p>
+
+<p>
+Recently, using indentation as the sole grouping construct of a
+language has become popular (in particular
+with the advent of the Python programming language).
+This approach solves the problem of indentation going out of sync
+with the native grouping construct of the language, and exploits
+the fact that most programmers indent larger programs and expect
+reasonable indentation by others.
+Unfortunately, the Python syntax uses special constructs
+for the various semantic
+constructs of the language, and the syntaxes of file input and
+interactive input differ slightly.
+</p>
+
+<p>
+<a href="http://srfi.schemers.org/srfi-49/">SRFI-49</a>
+defined a promising indentation-sensitive syntax for Scheme.
+Unfortunately,
+<a href="#srfi-49">SRFI-49 had some awkward usage issues</a>,
+and by itself it lacks
+support for infix notation (e.g., <samp>{a&nbsp;+&nbsp;b}</samp>)
+and prefix formats (e.g., <samp>f(x)</samp>).
+Sweet-expressions build on and refine SRFI-49 by addressing these issues.
+Real programs by different authors have been written using sweet-expressions,
+demonstrating that sweet-expressions are a practical notation.
+See the <a href="#design-rationale">design rationale</a> for a detailed
+discussion on how and why it is designed this way.
+</p>
+
+<p>
+Sweet-expressions <i>are</i> general and homoiconic,
+and thus can be easily used with other constructs
+such as quasiquoting and macros.
+In short, if a capability can be accessed using s-expressions, then they
+can be accessed using sweet-expressions.
+Unlike Python, the notation is exactly the same in a REPL and a file,
+so people can switch between a REPL and files without issues.
+Fundamentally, sweet-expressions define a few additional abbreviations
+for s-expressions, in much the same way that
+<samp>&#39;x</samp> is an abbreviation for <samp>(quote&nbsp;x)</samp>.
+</p>
+
+
+<h1><a name="specification">Specification</a></h1>
+<p>
+The key words
+&#8220;<em>MUST</em>&#8221;,
+&#8220;<em>MUST NOT</em>&#8221;,
+&#8220;<em>REQUIRED</em>&#8221;,
+&#8220;<em>SHALL</em>&#8221;,
+&#8220;<em>SHALL NOT</em>&#8221;,
+&#8220;<em>SHOULD</em>&#8221;,
+&#8220;<em>SHOULD NOT</em>&#8221;,
+&#8220;<em>RECOMMENDED</em>&#8221;,
+&#8220;<em>MAY</em>&#8221;,
+and &#8220;<em>OPTIONAL</em>&#8221; in this
+document are to be interpreted as described in
+<a href="http://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.
+</p>
+
+<h3 id="basic-specification">Basic specification</h3>
+
+<p>&#8220;<dfn>Sweet-expressions</dfn>&#8221; (aka &#8220;<dfn>t-expressions</dfn>&#8221;) deduce parentheses from indentation.
+A sweet-expression reader <em>MUST</em> interpret its input
+as follows when indentation processing is active:
+</p>
+<ol>
+<li>An indented line is a parameter of its parent.</li>
+<li>Later terms on a line are parameters of the first term.</li>
+<li>A line with exactly one term, and no child lines, is simply that term; multiple terms are wrapped into a list.</li>
+<li>An empty line ends the expression; empty lines before expressions are ignored.</li>
+<li>Terms are neoteric-expressions as defined in
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
+Thus <samp>{a&nbsp;+&nbsp;b}</samp> maps to <samp>(+&nbsp;a&nbsp;b)</samp>,
+<samp>f(...)</samp> maps to <samp>(f&nbsp;...)</samp>, and
+<samp>f{...}</samp> with non-empty content
+maps to <samp>(f&nbsp;{...})</samp>.</li>
+<li>When reading begins, indentation processing is active, but indentation processing is disabled inside ( ), [ ], and { }, whether they are prefixed or not
+(inside they&#8217;re a sequence of
+whitespace-separated neoteric-expressions).</li>
+</ol>
+
+<p>
+A sweet-expression reader <em>MUST</em> apply these rule clarifications:
+</p>
+<ol>
+<li>You can indent using one or more of the indent characters,
+which are space, tab, and exclamation point (!).
+Except for lines with initial indents and the first line of a stream,
+every line <em>MUST</em> be <dfn>consistently indented</dfn>.
+A line is consistently indented if
+the indent character sequence of that line, when compared to the
+indent character sequence of the preceding line,
+is equal or one is a prefix of the other.
+</li>
+<li>An unescaped &#8220;;&#8221; not in a string (still) introduces comments
+that end at the end of the line.</li>
+<li>Lines with only a ;-comment (preceded by 0 or more indent characters)
+are completely ignored - even their indentation (if any) is irrelevant.</li>
+<li>A line with only indentation is an empty line.</li>
+<li>An expression that starts indented enables &#8220;indented-compatibility&#8221; mode,
+where indentation is completely ignored.
+Instead, a sequence of white-space separated neoteric-expressions is read
+until the first end of line.</li>
+<li>Scheme&#8217;s <code>#;</code> datum comment comments out the next neoteric expression,
+not the next sweet expression.
+Datum comments ignore intervening whitespace, including spaces, tabs, and newlines.</li>
+<li>Block comments (<samp>#|</samp>...<samp>|#</samp>) are removed.</li>
+<li>For all <code>#</code>-based comments
+(i.e. datum comments <code>#;</code>,
+block comments <code>#|</code>...<code>|#</code>,
+the markers <code>#!fold-case</code> <code>#!no-fold-case</code> <code>#!sweet</code> <code>#!curly-infix</code>,
+and anything else an implementation can read
+but does not return a datum),
+if they
+begin immediately after the indent (if any),
+the indentation at the beginning of the comment is used.
+</li>
+<li>
+A sweet-expression reader <em>MUST</em> accept, as an
+an end-of-line (EOL) sequence, either
+a newline <i>or</i> a carriage return followed by newline.
+A sweet-expression reader <em>SHOULD</em> also accept
+a carriage return without a following newline as an end-of-line sequence.
+</li>
+<li>
+Portable non-empty files <em>MUST</em> end with an unescaped end-of-line
+sequence before the end-of-file.
+A sweet-expression reader <em>MAY</em> treat non-empty files that do
+not end in an unescaped
+end-of-line as though an end-of-line sequence had been added.
+</li>
+</ol>
+
+<p>
+A sweet-expression reader <em>MUST</em> implement these
+sweet-expression &#8220;advanced features&#8221;:
+<ol>
+<li>
+The marker <code>\\</code> is specially interpreted.
+If any terms precede it on the line, it is called SPLIT,
+and it <em>MUST</em> be interpreted
+as if it started a new line, at the current line&#8217;s indentation.
+If no terms precede <code>\\</code> on the line,
+it is called GROUP,
+and it represents no symbol at all,
+located at that indentation (GROUP is useful for lists of lists).</li>
+<li>
+The marker <code>$</code> (aka SUBLIST) <em>MUST</em> restart list processing.
+If <code>$</code> is preceded by any terms on the line,
+the right-hand-side (including its sub-blocks)
+is the last parameter of the left-hand side
+(of just that line).
+If there&#8217;s no left-hand-side,
+the right-hand-side is put in a list.
+</li>
+<li>
+A leading traditional abbreviation
+(quote, comma, backquote, or comma-at),
+located after indentation,
+and followed by space or tab,
+<em>MUST</em> be interpreted as that operator applied to the entire sweet-expression that follows.
+</li>
+<li>
+The markers &#8220;&lt;*&#8221; and &#8220;*&gt;&#8221; surround a
+<i>collecting list</i>, and <em>MUST</em> accept
+a list of 0 or more un-indented sweet-expressions.
+</li>
+<li>
+The marker &#8220;$$$&#8221; <em>MUST</em> be reserved for future use.
+</li>
+</ol>
+
+<p>
+The markers for the advanced sweet-expression features <em>MUST</em>
+only be accepted as such when indentation processing is active,
+and character sequence <em>MUST NOT</em> be considered one of those
+markers if it does not begin with exactly the marker&#8217;s first character.
+For example, <samp><tt>{$}</tt></samp>
+<em>MUST NOT</em> be interpreted as the SUBLIST marker; instead, it
+<em>MUST</em> be interpreted as the symbol <samp>$</samp>.
+</p>
+
+<p>A <dfn>sweet-expression reader</dfn> is a datum reader
+that can correctly read and map sweet-expressions as defined above
+(including the advanced sweet-expression features).
+An implementation of this SRFI <em>MUST</em> accept
+the directive <code>#!sweet</code> followed by a whitespace character
+in its standard datum readers (e.g., <code>read</code> and, if applicable,
+the default implementation REPL).
+This directive <em>MUST</em> be consumed and considered whitespace.
+After reading this directive, the reader <em>MUST</em> accept
+sweet-expressions in subsequent datums read from the same port,
+until some other conflicting directive is given.
+Once a sweet-expression reader is enabled,
+the <code>#!sweet</code> directive <em>MUST</em> be accepted and ignored.
+</p>
+
+<p>
+A <code>#!curly-infix</code>
+<em>SHOULD</em> cause the current port to switch to SRFI-105
+semantics (e.g., sweet-expression indentation processing is disabled).
+A <code>#!no-sweet</code>
+<em>SHOULD</em> cause the current port to
+disable sweet-expression indentation processing and
+<em>MAY</em> also disable curly-infix expression processing.
+</p>
+
+<p>
+A sweet-expression reader <em>SHOULD</em> support
+<a href="http://srfi.schemers.org/srfi-30/">SRFI-30
+(Nested Multi-line comments)</a> (<tt>#|</tt>&nbsp;...&nbsp;<tt>|#</tt>)
+and
+<a href="http://srfi.schemers.org/srfi-62/">SRFI-62
+(S-expression comments)</a> (<tt>#;</tt><var>datum</var>).
+A sweet-expression reader <em>SHOULD</em> support
+<a href="http://srfi.schemers.org/srfi-22/">SRFI-22
+(Running Scheme Scripts on Unix)</a> (where #!+space ignores
+to the end of the line),
+<tt>#!</tt> followed by a letter as a directive
+(such as <tt>#!fold-case</tt>) that is delimited by a whitespace character
+or end-of-file,
+and the formats
+<tt>#!/</tt>&nbsp;...&nbsp;<tt>!#</tt> and
+<tt>#!.</tt>&nbsp;...&nbsp;<tt>!#</tt> as multi-line non-nesting comments.
+</p>
+
+<p>
+Implementations of this SRFI <em>MAY</em>
+implement sweet-expressions in their datum readers by default,
+even when the <code>#!sweet</code> directive is not (yet) received.
+Portable applications <em>SHOULD</em> include the <code>#!sweet</code>
+directive before using sweet-expressions, typically near the top of a file.
+Portable applications <em>SHOULD NOT</em>
+use this directive as the very first characters of a file
+because they might be misinterpreted on some platforms
+as an executable script header; preceding this directive with a newline
+avoids this problem.
+</p>
+
+<p>
+Implementations <em>MAY</em> provide the procedures
+<var>sweet-read</var> as a sweet-expression reader and/or
+<var>neoteric-read</var> as a neoteric-expression reader.
+If provided, these procedures
+<em>SHOULD</em> support an optional port parameter.
+</p>
+
+<p>
+Implementations <em>SHOULD</em> enable a sweet-expression reader when
+reading a file whose name ends in &#8220;.sscm&#8221; (Sweet Scheme).
+Application authors <em>SHOULD</em> use the
+filename extension &#8220;.sscm&#8221;
+when writing portable Scheme programs using sweet-expressions.
+</p>
+
+<p>Note that, by definition, this SRFI modifies lexical syntax.</p>
+
+<h2><a name="related-tools">Related tools</a></h2>
+
+<p>
+Implementations <em>MAY</em> provide a tool,
+called an &#8220;unsweetener&#8221;,
+that reads sweet-expressions and writes out s-expressions.
+An unsweetener <em>SHOULD</em> specially treat
+lines that begin with a semicolon
+when they are not currently reading an expression (e.g., no expression has
+been read, or the last expression read has been completed with a blank line).
+Such a tool <em>SHOULD</em>
+(when outside an expression) copy exactly
+any line beginning with semicolon followed by a whitespace or semicolon.
+Such a tool <em>SHOULD</em>
+(when outside an expression) also
+copy lines beginning with &#8220;;#&#8221; or &#8220;;!&#8221;
+without the leading semicolon,
+and copy lines beginning with &#8220;;_&#8221;
+without either of those first two characters.
+Application authors <em>SHOULD</em>
+follow a semicolon in the first column with a whitespace character
+or semicolon if they mean for it to be a comment.
+</p>
+
+<p>
+A program editor <em>MAY</em> usefully highlight
+blank lines (as they separate expressions) and lines beginning at the
+left column (as these start new expressions).
+We <em>RECOMMEND</em> that program editors highlight
+expressions whose first line is indented,
+to reduce the risk of their accidental use.
+</p>
+
+<h2><a name="bnf">Backus&#45;Naur Form (BNF)</a></h2>
+<p>
+The following BNF rules define sweet-expressions;
+a sweet-expression reader <em>MUST</em> implement the productions
+below unless otherwise noted.
+The BNF is intended to capture the specification above;
+in case of (unintentional)
+conflict, the specification text above governs.
+The BNF is an LL(1) grammar, written using
+<a href="http://www.antlr.org/">ANTLR version 3</a>.
+</p>
+
+<p>
+In the summarized BNF below,
+the action rules inside {...} are in Scheme syntax.
+You can also separately view the
+<a href="sweet.g">full ANTLR BNF definition of sweet-expressions
+with Java action rules</a>, along with a support Java class
+<a href="Pair.java">Pair.java</a>.
+</p>
+
+<p>
+As with SRFI-49, we model input as being preprocessed and having
+INDENT and DEDENT tokens inserted to represent the addition or
+removal of indentation; a single end-of-line may translate to a single
+EOL followed by multiple DEDENT tokens.
+(The indent and dedent non-terminals just refer to INDENT and DEDENT
+respectively.)
+If the indentation is invalid, BADDENT is generated which is not
+matched by the grammar.
+</p>
+<p>
+A sweet-expression reader <em>MUST</em>
+support three modes: indentation processing,
+enclosed (when inside pairs of parentheses, brackets, or curly braces,
+recursively), and initial indent.
+On initialization a sweet-expression reader <em>MUST</em> be
+in indentation processing mode.
+An initial indent <em>MUST</em> enter indentation processing mode,
+which <em>MUST</em> end on an end-of-line sequence.
+The markers <tt>\\</tt>, <tt>$</tt>, <tt>&lt;*</tt>, <tt>*&gt;</tt>,
+and the abbreviations followed by horizontal space
+<em>MUST</em> only have their
+special meaning in indentation processing mode.
+</p>
+
+<p>
+There are a few special non-terminals that act essentially as comments
+and are used to clarify the grammar; each matches an empty sequence:
+</p>
+<ol>
+<li>empty : Identifies an empty branch</li>
+<li>same  : Emphasizes where neither indent nor dedent has occurred</li>
+<li>error : Specifically identifies an error branch.</li>
+</ol>
+<p>
+The error non-terminal makes it clear where a sequence is
+not defined by this specification, and thus
+recommends where a parser might specifically check for errors.
+It also also acts as a check on the grammar itself (to help warn the
+BNF developers of unintended interpretation).
+Note that errors can occur elsewhere, and an implementation
+MAY include an extension where an error is noted in this grammar.
+</p>
+
+<p>
+The BNF productions below are intentionally written so that they can
+be easily implemented using a recursive descent parser that
+corresponds to the given rules.
+In particular, the rules are given so that it would be easy to implement
+a parser that does not consume characters unless
+necessary and to not require multi-character unread-char
+(this makes it easy to reuse an underlying <var>read</var> procedure).
+However, no particular implementation approach is required.
+Unlike the SRFI-49 BNF, this BNF makes comment and whitespace
+processing explicit, to make comment and whitespace processing requirements
+clear.
+</p>
+
+<p>
+A sweet-expression reader <em>MUST</em> read n-expression tails greedily.
+That is, if a potential tail begins with an opening parenthesis,
+bracket, or brace, it <em>MUST</em> be considered a tail; otherwise,
+it <em>MUST NOT</em> be considered a tail.
+</p>
+
+<p>
+The BNF depends on this utility function:
+</p>
+<pre>
+; If x is a 1-element list, return (car x), else return x
+(define (monify x)
+  (cond
+    ((not (pair? x)) x)
+    ((null? (cdr x)) (car x))
+    (#t x)))
+</pre>
+
+<p>
+Here is the actual BNF:
+</p>
+
+<!-- Between start and end pre, insert the results of ./to-srfi < sweet.g -->
+<pre>
+SPACE    : ' ';
+TAB      : '\t';
+PERIOD   : '.';
+
+// Special markers, which only have meaning outside (), [], {}.
+GROUP_SPLIT  : {(indent_processing)}? =&gt; '\\' '\\'; // GROUP/split symbol.
+SUBLIST      : {(indent_processing)}? =&gt;'$';
+COLLECTING     : {(indent_processing)}? =&gt; '&lt;*' { restart_indent_level()} ;
+// This generates EOL + (any DEDENTs ) + COLLECTING_END, and restores indents:
+COLLECTING_END : {(indent_processing)}? =&gt; t='*&gt;' {process_collecting_end($t)};
+RESERVED_TRIPLE_DOLLAR : {(indent_processing)}? =&gt; '$$$';  // Reserved.
+
+// Abbreviations followed by certain whitespace are special:
+APOSW           : {(indent_processing)}? =&gt; '\'' (SPACE | TAB) ;
+QUASIQUOTEW     : {(indent_processing)}? =&gt; '\`' (SPACE | TAB) ;
+UNQUOTE_SPLICEW : {(indent_processing)}? =&gt; ',@' (SPACE | TAB) ;
+UNQUOTEW        : {(indent_processing)}? =&gt; ','  (SPACE | TAB) ;
+
+// Abbreviations followed by EOL also generate abbrevW:
+APOS_EOL        : {(indent_processing)}? =&gt; '\'' EOL_SEQUENCE
+                  SPECIAL_IGNORED_LINE* i=INDENT_CHARS_PLUS
+                  {emit_type(APOSW); emit_type(EOL);
+                   process_indent($i.text $i)};
+QUASIQUOTE_EOL  : {(indent_processing)}? =&gt; '\`' EOL_SEQUENCE
+                  SPECIAL_IGNORED_LINE* i=INDENT_CHARS_PLUS
+                  {emit_type(QUASIQUOTEW); emit_type(EOL);
+                   process_indent($i.text $i)};
+UNQUOTE_SPLICE_EOL: {(indent_processing)}? =&gt; ',@' EOL_SEQUENCE
+                  SPECIAL_IGNORED_LINE* i=INDENT_CHARS_PLUS
+                  {emit_type(UNQUOTE_SPLICEW); emit_type(EOL);
+                   process_indent($i.text $i)};
+UNQUOTE_EOL     : {(indent_processing)}? =&gt; ',' EOL_SEQUENCE
+                  SPECIAL_IGNORED_LINE* i=INDENT_CHARS_PLUS
+                  {emit_type(UNQUOTEW); emit_type(EOL);
+                   process_indent($i.text $i)};
+
+// Abbreviations not followed by horizontal space are ordinary:
+APOS           : '\'';
+QUASIQUOTE     : '\`';
+UNQUOTE_SPLICE : ',@';
+UNQUOTE        : ',';
+
+// Special end-of-line character definitions.
+fragment EOL_CHAR : '\n' | '\r' ;
+fragment NOT_EOL_CHAR : (~ (EOL_CHAR));
+fragment NOT_EOL_CHARS : NOT_EOL_CHAR*;
+fragment EOL_SEQUENCE : ('\r' '\n'? | '\n');
+
+// Comments. LCOMMENT=line comment, scomment=special comment.
+LCOMMENT :       ';' NOT_EOL_CHARS ; // Line comment - doesn't include EOL
+BLOCK_COMMENT : '#|' // This is #| ... #|
+      (options {greedy=false;} : (BLOCK_COMMENT | .))* '|#' ;
+DATUM_COMMENT_START : '#;' ;
+// SRFI-105 notes that "implementations could trivially support
+// (simultaneously) markers beginning with #! followed by a letter
+// (such as the one to identify support for curly-infix-expressions),
+// the SRFI-22 #!+space marker as an ignored line, and the
+// format #!/ ... !# and #!. ... !# as a multi-line comment."
+// We'll implement that approach for maximum flexibility.
+SRFI_22_COMMENT : '#! ' NOT_EOL_CHARS ;
+SHARP_BANG_FILE : '#!' ('/' | '.') (options {greedy=false;} : .)*
+                  '!#' (SPACE|TAB)* ;
+// These match #!fold-case, #!no-fold-case, #!sweet, and #!curly-infix;
+// it also matches a lone "#!".  The "#!"+space case is handled above,
+// in SRFI_22_COMMENT, overriding this one:
+SHARP_BANG_MARKER : '#!' (('a'..'z'|'A'..'Z'|'_')
+                    ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-')*)? (SPACE|TAB)* ;
+
+// IMPORTANT SUPPORTING PARSER DEFINITIONS for the BNF
+
+hspace  : SPACE | TAB ;        // horizontal space
+
+// Production "abbrevw" is an abbreviation with a following whitespace:
+abbrevw returns [Object v]
+  : APOSW           {'quote}
+  | QUASIQUOTEW     {'quasiquote}
+  | UNQUOTE_SPLICEW {'unquote-splicing}
+  | UNQUOTEW        {'unquote} ;
+
+// Production "abbrev_no_w" is an abbreviation without a following whitespace:
+abbrev_no_w returns [Object v]
+  : APOS            {'quote}
+  | QUASIQUOTE      {'quasiquote}
+  | UNQUOTE_SPLICE  {'unquote-splicing}
+  | UNQUOTE         {'unquote};
+
+abbrev_all returns [Object v]
+  : abbrevw         {$abbrevw}
+  | abbrev_no_w     {$abbrev_no_w} ;
+
+// Production "n_expr" is a full neoteric-expression as defined in SRFI-105.
+// n_expr does *not* consume any following horizontal space.
+// Uses "n_expr_noabbrev", an n-expression with no leading abbreviations:
+n_expr returns [Object v]
+ : abbrev_all n1=n_expr {(list $abbrev_all $n1)}
+ | n_expr_noabbrev      {$n_expr_noabbrev} ;
+
+// Production "n_expr_first" is a neoteric-expression, but leading
+// abbreviations cannot have an whitespace afterwards (used by "head"):
+n_expr_first returns [Object v]
+  : abbrev_no_w n1=n_expr_first {(list $abbrev_no_w $n1)}
+  | n_expr_noabbrev            {$n_expr_noabbrev} ;
+
+// Production "scomment" (special comment) defines comments other than ";":
+sharp_bang_comments : SRFI_22_COMMENT | SHARP_BANG_FILE | SHARP_BANG_MARKER ;
+scomment : BLOCK_COMMENT
+         | DATUM_COMMENT_START (options : {greedy=true} hspace)* n_expr
+         | sharp_bang_comments ;
+
+// Production "comment_eol" reads an optional ;-comment (if it exists),
+// and then reads the end-of-line (EOL) sequence.  EOL processing consumes
+// additional comment-only lines (if any) which may be indented.
+
+comment_eol : LCOMMENT? EOL;
+
+
+// KEY BNF PRODUCTIONS for sweet-expressions:
+
+// Production "collecting_tail" returns a collecting list's contents.
+// Precondition: At beginning of line.
+// Postcondition: Consumed the matching collecting_end.
+// FF = formfeed (\f aka \u000c), VT = vertical tab (\v aka \u000b)
+
+collecting_tail returns [Object v]
+  : it_expr more=collecting_tail {(cons $it_expr $more)}
+  | (initial_indent_no_bang | initial_indent_with_bang)?
+    comment_eol    retry1=collecting_tail {$retry1}
+  | (FF | VT)+ EOL retry2=collecting_tail {$retry2}
+  | collecting_end {'()} ;
+
+// Production "head" reads 1+ n-expressions on one line; it will
+// return the list of n-expressions on the line.  If there is one n-expression
+// on the line, it returns a list of exactly one item; this makes it
+// easy to append to later (if appropriate).  In some cases, we want
+// single items to be themselves, not in a list; function monify does this.
+// The "head" production never reads beyond the current line
+// (except within a block comment), so it doesn't need to keep track
+// of indentation, and indentation will NOT change within head.
+// The "head" production only directly handles the first n-expression on the
+// line, and then calls on "rest" to process the rest (if any); we do this
+// because in a few cases it matters if an expression is the first one.
+// Callers can depend on "head" and "rest" *not* changing indentation.
+// On entry, all indentation/hspace must have already been read.
+// On return, it will have consumed all hspace (spaces and tabs).
+
+// Precondition: At beginning of line+indent
+// Postcondition: At unconsumed EOL
+
+head returns [Object v]
+  : PERIOD /* Leading ".": escape following datum like an n-expression. */
+      (hspace+
+        (pn=n_expr hspace* (n_expr error)? {(list $pn)}
+         | empty  {(list '.)} )
+       | empty    {(list '.)} )
+  | COLLECTING hspace* collecting_tail hspace*
+      (rr=rest            {(cons $collecting_tail $rr)}
+       | empty            {(list $collecting_tail)} )
+  | basic=n_expr_first /* Only match n_expr_first */
+      ((hspace+ (br=rest  {(cons $basic $br)}
+                 | empty  {(list $basic)} ))
+       | empty            {(list $basic)} ) ;
+
+// Production "rest" production reads the rest of the expressions on a line
+// (the "rest of the head"), after the first expression of the line.
+// Like head, it consumes any hspace before it returns.
+// The "rest" production is written this way so a non-tokenizing
+// implementation can read an expression specially. E.G., if it sees a period,
+// read the expression directly and then see if it's just a period.
+// Precondition: At beginning of non-first expression on line (past hspace)
+// Postcondition: At unconsumed EOL
+
+rest returns [Object v]
+  : PERIOD /* Improper list */
+      (hspace+
+        (pn=n_expr hspace* (n_expr error)? {$pn}
+         | COLLECTING hspace* pc=collecting_tail hspace*
+           (n_expr error)? {$pc}
+         | empty {(list '.)})
+       | empty   {(list '.)})
+  | scomment hspace* (sr=rest {$sr} | empty {'()} )
+  | COLLECTING hspace* collecting_tail hspace*
+    (rr=rest             {(cons $collecting_tail $rr)}
+     | empty             {(list $collecting_tail)} )
+  | basic=n_expr
+      ((hspace+ (br=rest {(cons $basic $br)}
+                 | empty {(list $basic)} ))
+       | empty           {(list $basic)} ) ;
+
+// Production "body" handles the sequence of 1+ child lines in an it_expr
+// (e.g., after a "head"), each of which is itself an it_expr.
+// It returns the list of expressions in the body.
+// Note that an it-expr will consume any line comments or hspaces
+// before it returns back to the "body" production.
+// Since (list x) is simply (cons x '()), this production always does a
+// cons of the first it_expr and another body [if it exists] or '() [if not].
+
+body returns [Object v]
+  : i=it_expr
+     (same
+       ( {isperiodp($i)}? =&gt; f=it_expr dedent
+           {$f} // Improper list final value
+       | {! isperiodp($i)}? =&gt; nxt=body
+           {(cons $i $nxt)} )
+     | dedent {(list $i)} ) ;
+
+// Production "it_expr" (indented sweet-expressions)
+// is the main production for sweet-expressions in the usual case.
+// Precondition: At beginning of line+indent
+// Postcondition: it-expr ended by consuming EOL + examining indent
+// Note: This BNF presumes that "*&gt;" generates multiple tokens,
+// "EOL DEDENT* COLLECTING_END", and resets the indentation list.
+// You can change the BNF below to allow "head empty", and handle dedents
+// by directly comparing values; then "*&gt;" only needs to generate
+// COLLECTING_END. But this creates a bunch of ambiguities
+// like a 'dangling else', which must all be disambiguated by accepting
+// the first or the longer sequence first.  Either approach is needed to
+// support "*&gt;" as the non-first element so that the "head" can end
+// without a literal EOL, e.g., as in "let &lt;* y 5 *&gt;".
+
+it_expr returns [Object v]
+  : head
+    (options {greedy=true} : (
+     GROUP_SPLIT hspace* /* Not initial; interpret as split */
+      (options {greedy=true} :
+        // To allow \\ EOL as line-continuation, instead do:
+        //   comment_eol same more=it_expr {(append $head $more)}
+        comment_eol error
+        | empty {(monify $head)} )
+     | SUBLIST hspace* /* head SUBLIST ... case */
+       (sub_i=it_expr {(append $head (list $sub_i))}
+        | comment_eol error )
+     | comment_eol // Normal case, handle child lines if any:
+       (indent children=body {(append $head $children)}
+        | empty              {(monify $head)} /* No child lines */ )
+    // If COLLECTING_END doesn't generate multiple tokens, can do:
+    // | empty               {(monify $head)}
+     ))
+  | (GROUP_SPLIT | scomment) hspace* /* Initial; Interpet as group */
+      (group_i=it_expr {$group_i} /* Ignore initial GROUP/scomment */
+       | comment_eol
+         (indent g_body=body {$g_body} /* Normal GROUP use */
+          | same ( g_i=it_expr {$g_i} /* Plausible separator */
+                   /* Handle #!sweet EOL EOL t_expr */
+                   | comment_eol restart=t_expr {$restart} )
+          | dedent error ))
+  | SUBLIST hspace* /* "$" first on line */
+    (is_i=it_expr {(list $is_i)}
+     | comment_eol error )
+  | abbrevw hspace*
+      (comment_eol indent ab=body
+         {(append (list $abbrevw) $ab)}
+       | ai=it_expr
+         {(list $abbrevw $ai)} ) ;
+
+// Production "t_expr" is the top-level production for sweet-expressions.
+// This production handles special cases, then in the normal case
+// drops to the it_expr production.
+// Precondition: At beginning of line
+// Postcondition: At beginning of line
+
+// The rule for "indent processing disabled on initial top-level hspace"
+// is a very simple (and clever) BNF construction by Alan Manuel K. Gloria.
+// If there is an indent it simply reads a single n-expression and returns.
+// If there is more than one on an initially-indented line, the later
+// horizontal space will not have have been read, so this production will
+// fire again on the next invocation, doing the right thing.
+
+t_expr returns [Object v]
+  : comment_eol    retry1=t_expr {$retry1}
+  | (FF | VT)+ EOL retry2=t_expr {$retry2}
+  | (initial_indent_no_bang | hspace+ )
+    (n_expr {$n_expr} /* indent processing disabled */
+     | ((scomment (options {greedy=true} : hspace)*
+       sretry=t_expr {$sretry}))
+     | comment_eol retry3=t_expr {$retry3} )
+  | initial_indent_with_bang error
+  | EOF {(generate_eof)} /* End of file */
+  | it_expr {$it_expr} /* Normal case */ ;
+
+</pre>
+
+<h1><a name="examples">Examples</a></h1>
+<p>
+Here are some examples and their mappings.
+Note that a sweet-expression reader would accept either form in all cases,
+since a sweet-expression reader is for the most part a
+traditional s-expression reader with support for some additional abbreviations.
+</p>
+
+<table border="1" cellpadding="4">
+<tr>
+<th align="center">Sweet-expressions (t-expressions)</th>
+<th align="center">s-expressions</th>
+</tr>
+<tr>
+<td align="left" valign="top">
+<pre>
+define fibfast(n)  ; Typical function notation
+  if {n &lt; 2}       ; Indentation, infix {...}
+    n              ; Single expr = no new list
+    fibup n 2 1 0  ; Simple function calls
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (fibfast n)
+  (if (&lt; n 2)
+    n
+    (fibup n 2 1 0)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define fibup(max count n-1 n-2)
+  if {max = count}
+    {n-1 + n-2}
+    fibup max {count + 1} {n-1 + n-2} n-1
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (fibup max count n-1 n-2)
+  (if (= max count)
+    (+ n-1 n-2)
+    (fibup max (+ count 1) (+ n-1 n-2) n-1)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define factorial(n)
+  if {n &lt;= 1}
+    1
+    {n * factorial{n - 1}}
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (factorial n)
+  (if (&lt;= n 1)
+    1
+    (* n (factorial (- n 1)))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<!-- Here's another trivial Scheme program, a greatest common divisor function straight from Carl A. Gunter's "Semantics of Programming Languages" page 2: -->
+<td align="left" valign="top">
+<pre>
+define gcd(x y)
+  if {y = 0}
+    x
+    gcd y rem(x y)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (gcd x y)
+  (if (= y 0)
+    x
+    (gcd y (rem x y))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<!-- From "sweeten" -->
+<td align="left" valign="top">
+<pre>
+define represent-as-infix?(x)
+  and
+    pair? x
+    is-infix-operator? car(x)
+    list? x
+    {length(x) &lt;= 6}
+</pre>
+<td align="left" valign="top">
+<pre>
+(define (represent-as-infix? x)
+  (and
+    (pair? x)
+    (is-infix-operator? (car x))
+    (list? x)
+    (&lt;= (length x) 6)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<!-- From "sweeten" -->
+<td align="left" valign="top">
+<pre>
+define line-tail(x)
+  cond
+    null?(x)  '()
+    pair?(x)
+      append '(#\space)
+        exposed-unit car(x)
+        line-tail cdr(x)
+    #t
+      append LISTSP.SP exposed-unit(x)
+</pre>
+<td align="left" valign="top">
+<pre>
+(define (line-tail x)
+  (cond
+    ((null? x) (quote ()))
+    ((pair? x)
+      (append '(#\space)
+        (exposed-unit (car x))
+        (line-tail (cdr x))))
+    (#t
+      (append LISTSP.SP (exposed-unit x)))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+g factorial(7) my-pi() #f() -i -(cos(0))
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(g (factorial 7) (my-pi) (#f) 0-i (- (cos 0)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+aaa bbb
+      ; Comment indent ignored
+  cc dd
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(aaa bbb
+
+  (cc dd))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+let ; Demo GROUP
+  \\
+    var1 cos(a)
+    var2 sin(a)
+  body...
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(let
+  (
+    (var1 (cos a))
+    (var2 (sin a)))
+  body...)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+myfunction ; Demo SPLIT
+  x: \\ xpos
+  y: \\ ypos
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(myfunction
+  x: xpos
+  y: ypos)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+sin 0 \\ cos 0
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(sin 0)
+(cos 0)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(run (grep |-v| "xx.*zz" (&lt; oldfile) (&gt; newfile)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+a b $ c d e f $ g
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(a b (c d e f g))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define extract(c i) $ cond
+  vector?(c) $ vector-ref c i
+  string?(c) $ string-ref c i
+  pair?(c)   $ list-ref c i
+  else       $ error "Not a collection"
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (extract c i) (cond
+  ((vector? c) (vector-ref c i))
+  ((string? c) (string-ref c i))
+  ((pair? c) (list-ref c i))
+  (else (error "Not a collection"))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define merge(&lt; as bs) $ cond
+  null?(as)           $ bs
+  null?(bs)           $ as
+  {car(as) &lt; car(bs)} $ cons
+                         car as
+                         merge &lt; cdr(as) bs
+  else                $ cons
+                         car bs
+                         merge &lt; as cdr(bs)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (merge &lt; as bs) (cond
+  ((null? as) bs)
+  ((null? bs) as)
+  ((&lt; (car as) (car bs)) (cons
+    (car as)
+    (merge &lt; (cdr as) bs)))
+  (else (cons
+    (car bs)
+    (merge &lt; as (cdr bs))))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+' a b ; Demo abbreviations
+  ' c d e \\ 'f g h
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(quote (a b
+  (quote (c d e)) ((quote f) g h)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+let &lt;* x sqrt(a) *&gt;
+! g {x + 1} {x - 1}
+</pre>
+</td>
+<td>
+<pre>
+(let ((x (sqrt a)))
+  (g (+ x 1) (- x 1)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+let &lt;* x $ {oldx - 1} \\ y $ {oldy - 1} *&gt;
+! {{x * x} + {y * y}}
+</pre>
+</td>
+<td>
+<pre>
+(let ((x (- oldx 1)) (y (- oldy 1)))
+  (+ (* x x) (* y y)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+let &lt;* x $ cos $ f c *&gt;
+! dostuff x
+</pre>
+</td>
+<td>
+<pre>
+(let ((x (cos (f c))))
+  (dostuff x))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+ff ; Demo comments
+  #| qq |# t1 t2
+  t3 t4
+    t5 #| xyz |# t6
+    t7 #;t8(q) t9
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(ff
+  (t1 t2)
+  (t3 t4
+    (t5 t6)
+    (t7 t9)))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+f ; Demo improper lists
+  a . b
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(f
+  (a . b))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+f ; Demo vertical improper lists
+  x y
+  .
+  z
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(f
+  (x y)
+  .
+  z)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+; Demo BEGIN with an indent
+  f(a) g(x)
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(f a)
+(g x)
+</pre>
+</td>
+</tr>
+
+<tr>
+<!-- 
+; From http://docs.racket-lang.org/ts-guide/quick.html#%28part._.Using_.Typed_.Racket_from_the_.Racket_.R.E.P.L%29
+-->
+<td align="left" valign="top">
+<pre>
+struct: pt ((x : Real) (y : Real))
+{distance : (pt pt -> Real)}
+define distance(p1 p2)
+  sqrt{sqr{pt-x(p2) - pt-x(p1)} +
+       sqr{pt-y(p2) - pt-y(p1)}}
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(struct: pt ((x : Real) (y : Real)))
+(: distance (pt pt -> Real))
+(define (distance p1 p2)
+  (sqrt (+ (sqr (- (pt-x p2) (pt-x p1)))
+           (sqr (- (pt-y p2) (pt-y p1))))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define-library
+  example grid
+  export make rows cols ref each rename(put! set!)
+  import (scheme base)
+  &lt;* begin
+
+define make(n m)
+  let (grid(make-vector(n)))
+    do &lt;* i 0 {i + 1} *&gt;
+    ! {i = n} grid
+    ! let &lt;* v make-vector(m #f alse) *&gt;
+    !   vector-set! grid i v
+
+define rows(grid) vector-length(grid)
+define cols(grid)
+  vector-length(vector-ref(grid 0))
+
+define ref(grid n m)
+  and
+    {-1 &lt; n &lt; rows(grid)}
+    {-1 &lt; m &lt; cols(grid)}
+    vector-ref vector-ref(grid n) m
+
+define put!(grid n m v)
+  vector-set! vector-ref(grid n) m v
+*&gt;
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define-library
+  (example grid)
+  (export make rows cols ref each (rename put! set!))
+  (import (scheme base))
+  (begin
+
+    (define (make n m)
+      (let ((grid (make-vector n)))
+        (do ((i 0 (+ i 1)))
+            ((= i n) grid)
+            (let ((v (make-vector m #f alse)))
+              (vector-set! grid i v)))))
+
+    (define (rows grid) (vector-length grid))
+    (define (cols grid)
+      (vector-length (vector-ref grid 0)))
+
+    (define (ref grid n m)
+      (and
+        (< -1 n (rows grid))
+        (< -1 m (cols grid))
+        (vector-ref (vector-ref grid n) m)))
+
+    (define (put! grid n m v)
+      (vector-set! (vector-ref grid n) m v))))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<pre>
+define foo(x) . &lt;*
+
+define bar(y)
+! y
+
+define baz(z)
+! z
+*&gt;
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (foo x)
+
+  (define (bar y)
+    y)
+
+  (define (baz z)
+    z))
+</pre>
+</td>
+</tr>
+
+<tr>
+<td align="left" valign="top">
+<!-- Inspired by letterfall's code:
+define screen-initialize-post-show(toplevel-window drawing-area)
+  let
+    $ style $ get-style toplevel-window
+    set! back-pen $ get-black-gc style
+    set! fore-pen $ get-white-gc style
+    let
+      \\
+        configure-handler $ make-configure-handler drawing-area
+        expose-handler $    make-expose-handler drawing-area
+      set! the-expose-handler expose-handler
+      connect drawing-area 'configure-event configure-handler
+      connect drawing-area 'expose-event expose-handler
+      configure-handler()
+rewritten to fit in 40 characters.
+-->
+<pre>
+define init(win area)
+  let
+    $ style $ get-style win
+    set! back-pen $ black style
+    set! fore-pen $ white style
+    let
+      \\
+        config $ make-c area
+        expose $ make-e area
+      set! now expose
+      dostuff config expose
+</pre>
+</td>
+<td align="left" valign="top">
+<pre>
+(define (init win area)
+  (let
+    ((style (get-style win)))
+    (set! back-pen (black style))
+    (set! fore-pen (white style))
+    (let
+      (
+        (config (make-c area))
+        (expose (make-e area)))
+      (set! now expose)
+      (dostuff config expose))))
+</pre>
+</td>
+</tr>
+
+</table>
+
+
+<h1><a name="design-rationale">Design Rationale</a></h1>
+
+<p>
+We have separated the design rationale from the overall rationale,
+as was previously done by SRFI-26 and SRFI-105, because it is easier to
+understand the design rationale after reading the specification.
+It is long because we wish to describe, in some detail, why things are
+done the way they are, including some helpful comparisons to other efforts.
+</p>
+
+<h2 id="basic">Basic approach</h2>
+<p>
+The following subsections describe the overall basic approach
+that sweet-expressions take to improve s-expression readability.
+</p>
+
+<h3 id="general-and-homoiconic">General and homoiconic formats</h3>
+
+<p>There have been a huge number of past efforts
+to create readable formats for Lisp-based languages,
+going all the way back to the original
+<a href="#m-expressions">M-expression syntax</a>
+that Lisp&#8217;s creator expected to be used when
+programming.  Generally, they&#8217;ve been unsuccessful, or they end up
+creating a completely different language that lacks the advantages
+of Lisp-based languages.
+</p>
+
+<p>
+After examining a huge number of them,
+David A. Wheeler noticed a pattern: Past &#8220;readable&#8221; Lisp notations
+typically failed to be <em>general</em> or <em>homoiconic</em>:
+<ul>
+<li>
+A <em>general</em>
+format is <em>independent</em> of any specific underlying semantic.
+Most readability efforts focused on creating special syntax for each
+language construct of an underlying language.  But since Lisp-based
+languages can trivially create new semantic constructs (via macros), and
+are often used to process fragments of <em>other</em> languages, these
+did not work well.  It was often difficult to keep updating the parser to
+match the underlying system, so the parser was always less capable than
+using s-expressions... leading to abandonment of the specialized parser.
+One example of this process, among many, is the
+IACL2 (Infix ACL2) interface of ACL2.
+Sometimes the parser
+was continuously maintained, but this led to the development
+of a completely new language that was less suitable for self-analysis
+of program fragments and similar tasks (and thus no longer a suitable
+&#8220;Lisp&#8221;).
+In short, any new Lisp notation should be general.
+</li>
+<li>
+A <em>homoiconic</em> format is a surface format in which the <em>human</em>
+reader can easily determine what the underlying representation is.
+It is very difficult to take advantage of Lisp capabilities, such as
+macros, without a homoiconic format. Yet many past readability efforts
+made it difficult to determine exactly what structures were being
+created by the notation.
+Typical infix notations with precedence were
+especially common examples of this problem - they would quietly create
+multiple lists without obvious indications that this was happening.
+<a href="http://javascript.crockford.com/tdop/tdop.html">
+Top Down Operator Precedence by Douglas Crockford
+(2007-02-21)</a>, for example, discusses Vaughan Pratt&#8217;s &#8220;Top Down
+Operator Precedence&#8221; and shows how important homoiconicity is.
+He stated that &#8220;parsing techniques are not greatly valued in the
+LISP community, which celebrates the Spartan denial of syntax.
+There have been many attempts since LISP&#8217;s creation to give the language
+a rich ALGOL-like syntax, including Pratt&#8217;s CGOL, LISP 2, MLISP, Dylan,
+Interlisp&#8217;s Clisp, and McCarthy&#8217;s original
+<a href="#m-expressions">M-expressions</a>.
+All failed to find acceptance. That community found the correspondence between
+programs and data to be much more valuable than expressive syntax.
+But the mainstream programming community likes its syntax, so LISP has
+never been accepted by the mainstream.&#8221;
+As discussed below,
+<a href="http://www.dreamsongs.com/Files/Hopl2.pdf">
+&#8220;The Evolution of Lisp&#8221; by Guy Steele and Richard Gabriel</a>
+also stresses the importance of homoiconic notations in Lisp-based languages.
+</ul>
+
+<p>
+See
+<a href="http://www.dwheeler.com/readable/readable-s-expressions.html">http://www.dwheeler.com/readable/readable-s-expressions.html</a>
+for a longer discussion on past efforts.
+In any case, now that
+this pattern has been identified, new notations can be devised that are
+general and homoiconic - avoiding the problems of past efforts.
+</p>
+
+<p>
+Sweet-expressions were <i>specifically</i> designed to be
+general and homoiconic, and thus have the possibility of succeeding
+where past efforts have failed.</p>
+
+
+<h3 id="cant-improve">Is it impossible to improve on s-expression notation?</h3>
+
+<p>
+Some Lisp developers act as if Lisp notation descended from the gods,
+and thus is impossible to improve.
+The authors do not agree, and instead believe that Lisp
+notation <i>can</i> be improved beyond the notation created in the 1950s.
+The following is a summary of a
+<a href="http://sourceforge.net/p/readable/wiki/Retort/">retort</a>
+to those who believe Lisp notation cannot be improved, based on the
+claims in the
+<a href="http://www.lispniks.com/faq/faq.html">Common Lisp FAQ</a> and
+<a href="http://www.dreamsongs.com/Files/Hopl2.pdf">
+&#8220;The Evolution of Lisp&#8221; by Guy Steele and Richard Gabriel</a>.
+Below are quotes from those who argue against improvement of
+s-expression notation, and our replies.
+</p>
+
+<blockquote>
+<p>
+The Common Lisp FAQ says that people <i>&#8220;wonder why Lisp can&#8217;t
+use a more &#8216;normal&#8217; syntax.
+It&#8217;s not because Lispers have never thought of the idea - indeed,
+Lisp was originally intended to have a syntax much like FORTRAN...&#8221;</i>.
+</p>
+</blockquote>
+<p>
+This is an argument for our position, not for theirs.
+In other words, even Lisp&#8217;s creator (John McCarthy)
+understood that directly using s-expressions for Lisp programs was undesirable.
+No one argues that John McCarthy did not understand Lisp.
+Since even Lisp&#8217;s creator thought traditional Lisp notation was poor,
+this is strong evidence that traditional s-expression notation has problems.
+</p>
+
+<blockquote>
+<p>
+<a href="http://www.dreamsongs.com/Files/Hopl2.pdf">
+&#8220;The Evolution of Lisp&#8221; by Guy Steele and Richard Gabriel
+(HOPL2 edition)</a> says that,
+<i>&#8220;The idea of introducing Algol-like syntax into Lisp keeps popping up
+and has seldom failed to create enormous controversy between those who
+find the universal use of S-expressions a technical advantage (and don&#8217;t
+mind the admitted relative clumsiness of S-expressions for numerical
+expressions) and those who are certain that algebraic syntax is more
+concise, more convenient, or even more natural...&#8221;.</i>
+</p>
+</blockquote>
+<p>
+Note that even these authors, who are advocates for s-expression notation,
+admit that for numerical expressions they are clumsy.
+We agree that slavishly copying Algol is not a good idea.
+However, sweet-expressions do not try to create an
+&#8220;Algol-like&#8221; syntax; sweet-expressions are entirely general
+and not tied to a particular semantic at all.
+</p>
+
+<blockquote>
+<p>
+That paper continues,
+<i>&#8220;We conjecture that Algol-style syntax has not really caught on in the
+Lisp community as a whole for two reasons. First, there are not enough
+special symbols to go around. When your domain of discourse is limited
+to numbers or characters, there are only so many operations of interest,
+and it is not difficult to assign one special character to each and
+be done with it. But Lisp has a much richer domain of discourse,
+and a Lisp programmer often approaches an application as yet another
+exercise in language design; the style typically involves designing new
+data structures and new functions to operate on them - perhaps dozens
+or hundreds&#8221; and it&#8217;s just too hard to invent that many distinct
+symbols (though the APL community certainly has tried). Ultimately
+one must always fall back on a general function-call notation; it&#8217;s
+just that Lisp programmers don&#8217;t wait until they fail.&#8221;</i>
+</p>
+</blockquote>
+<p>
+This is a weak argument.
+Practically all languages allow compound symbols made from multiple
+characters, such as &gt;=; there is no shortage of symbols.
+Also, nearly all programming languages have a function-call notation, but
+only Lisp-based languages choose s-expressions to notate it, so
+saying &#8220;we need function call notation&#8221;
+do not excuse s-expressions.
+You do not need legions of special syntactic constructs;
+sweet-expressions allow developers to express anything that can be
+expressed with s-expressions, without being tied to a particular
+semantic or requiring a massive set of special symbols.
+</p>
+
+<blockquote>
+<p>
+<i>
+&#8220;Second, and
+perhaps more important, Algol-style syntax makes programs look less
+like the data structures used to represent them. In a culture where the
+ability to manipulate representations of programs is a central paradigm,
+a notation that distances the appearance of a program from the appearance
+of its representation as data is not likely to be warmly received (and
+this was, and is, one of the principal objections to the inclusion
+of loop in Common Lisp).&#8221;
+</i>
+</p>
+</blockquote>
+<p>
+Here Steele and Gabriel are <b>extremely</b> insightful.
+Today we would say that s-expressions are &#8220;homoiconic&#8221;.
+Homoiconic notations are extremely rare,
+and this property (homoiconicity) is an important reason that
+Lisps are still used decades after their development.
+Steele and Gabriel are absolutely right; there have been many efforts
+to create readable Lisp formats, and they all failed because they
+did not create formats that accurately represented the programs as
+data structures.
+A key and distinguishing advantage of a Lisp-like language is that
+you can treat code as data, and data as code.
+Any notation that makes
+this difficult means that you lose many of Lisp&#8217;s unique advantages.
+Homoiconicity is critical if you&#8217;re going to treat a program as data.
+To do so, you must be able to easily &#8220;see&#8221;
+the program&#8217;s format.
+If you can, you can do amazing manipulations.
+</p>
+<p>
+But what Gabriel and Steele failed to appreciate in their paper is that
+it&#8217;s possible to have a notation that is
+general, homoiconic, and easier to read.
+Now that we understand why past efforts failed, we can devise notations
+that are general and homoiconic - and succeed!
+</p>
+
+<p>
+Many people have noted that there are tools to help deal with s-expressions,
+but this misses the point.
+If the notation is so bad that you need tools to deal with it,
+it would be better to fix the notation.
+The resulting notation could be easier to read, and you could focus your
+tools on solving problems that were not self-inflicted.
+In particular, &#8220;stopping to see the parentheses&#8221; is a sign of a
+serious problem - the placement of parentheses fundamentally affects
+interpretation, and serious bugs can hide there.
+</p>
+<p>
+Others who have used Lisp for years,
+such as <a href="http://www.paulgraham.com/arcll1.html">Paul Graham</a>,
+see s-expressions as long-winded, and advocate for the use of
+&#8220;abbreviations&#8221; that can map down to an underlying s-expression notation.
+Sweet-expressions take this approach.
+</p>
+<h3 id="why-indent">Why should indentation be syntactically relevant?</h3>
+
+<p>
+Making indentation syntactically meaningful eliminates many
+parentheses, eliminating the need for humans to keep track of them.
+Real Lisp programs are already indented anyway;
+currently tools (like editors and pretty-printers) are used to try to
+keep the indentation (used by humans) and parentheses (used by
+the computers) in sync.
+By making the indentation (which humans depend on)
+actually used by the computer as well,
+they are automatically kept in sync.</p>
+
+<p>
+<a href="http://www.gregslepak.com/on-lisps-readability">On
+Lisp&#8217;s Readability and Parenthesis Stacking</a>
+shows one of the many examples of endless closing parentheses and brackets to
+close an expression, and the confusion that happens when indentation does
+not match the parentheses. bhurt&#8217;s response to that article is telling:
+&#8220;I&#8217;m always somewhat amazed by the claim that the parens
+&#8216;just disappear&#8217;, as if this is a good thing.
+Bugs live in the difference between the code in your head and the code on the
+screen - and having the parens in the wrong place causes bugs.
+And autoindenting isn&#8217;t the answer - I don&#8217;t want the
+indenting to follow the parens, I want the parens to follow the indenting.
+The indenting I can see, and can see is correct.&#8221;</p>
+
+<p>An IDE can help keep the
+indentation consistent with the parentheses, but
+<a href="http://www.recursivity.com/blog/2012/10/28/ides-are-a-language-smell/">needing IDEs to use a language</a>
+is considered by some a language smell.
+If you need special
+tools to work around problems with the notation, then the notation itself
+is a problem.</p>
+
+<p>A solution, of course, is to make the indentation
+actually matter: Now you don&#8217;t need an endless march of parentheses, and
+indentation can&#8217;t be confusing because it is actually used.</p>
+
+<p>&#8220;In
+praise of mandatory indentation...&#8221; notes that it can be <em>helpful</em>
+to have mandatory indentation:</p>
+<blockquote> <p>It hurts me to say
+that something so shallow as requiring a few extra spaces can have
+a bigger effect than, say, Hindley-Milner type inference.
+- <a href="http://okasaki.blogspot.com/2008/02/in-praise-of-mandatory-indentation-for.html">Chris Okasaki</a></p>
+</blockquote>
+
+<p>Other languages,
+including Python, Haskell, Occam, and Icon, use indentation to indicate
+structure, so this is a proven idea.  Other recently-developed languages
+like <a href="http://cobralang.com/docs/python/" rel="nofollow">Cobra</a>
+(a variant of Python with strong compile-time typechecking) have
+decided to use indentation too, so clearly indentation-sensitive
+languages are considered useful by many.</p>
+
+<p>
+One problem with indentation as syntactically relevant is that some
+transports drop leading space and tab characters.
+As discussed in the
+<a href="#indentation-characters">indentation characters</a> section,
+we have solved this as well.
+</p>
+
+<p>There&#8217;s a lot of
+past work on indentation to represent s-expressions.
+Examples include:</p>
+<ul>
+<li>Paul Graham (developer of Arc) is known to
+be an advocate of indentation for this purpose.  As noted above, <a
+href="http://lists.canonical.org/pipermail/kragen-tol/2002-January/000666.html"
+rel="nofollow">Kragen Sitaker&#8217;s notes on Graham and Arc</a>
+discusses how indentation can really help (in this notation,
+functions with no parameters need to be surrounded by parentheses, to
+distinguish them from atoms - &#8220;oh well&#8221; ).  Graham&#8217;s <a
+href="http://en.wikipedia.org/wiki/RTML" rel="nofollow">RTML</a> is
+implemented using Lisp, but uses indentation instead of parentheses to
+define structure.  RTML is a proprietary programming language that at
+least <em>was</em> used by Yahoo!&#8217;s Yahoo! Store and Yahoo! Site
+hosting products (though Yahoo may have transitioning away from it).
+See <a href="http://lib.store.yahoo.net/lib/paulgraham/bbnexcerpts.txt">Paul
+Graham&#8217;s comments
+about the RTML language design</a> and <a
+href="http://lib.store.yahoo.net/lib/ytimes/rtmlintro.pdf">
+this introduction to RTML by Yahoo</a>.</li>
+<li><a href="http://www.accesscom.com/~darius/">Darius Bacon&#8217;s
+&#8221;indent&#8221; file</a>, includes his own implementation of
+a Python/Haskell-like syntax for Scheme using indentation in place
+of parentheses, and in that file he also includes Paul D. Fernhout&#8217;s
+implementation of an indentation approach.  Bacon&#8217;s syntax for indenting
+uses colons in a way that is limiting (it interferes with other uses
+of the colon in various Lisp-like languages).</li>
+<li><a href="http://www.lispin.org/">Lispin</a>
+discusses a way to get S-expressions with indentation.</li>
+<li><a href="http://srfi.schemers.org/srfi-49/srfi-49.html">Scheme
+SRFI-49, I-expressions</a> - which are discussed next.
+</ul>
+
+<h3 id="srfi-49">What is the relationship between sweet-expressions and SRFI-49 (I-expressions)?</h3>
+
+<p>The sweet-expression indentation system is based on
+<a href="http://srfi.schemers.org/srfi-49/srfi-49.html">Scheme
+SRFI-49 (&#8220;surfi-49&#8221;), aka I-expressions</a>.
+The basic rules of SRFI-49
+(I-expression) indentation are kept in sweet-expressions; these are:</p>
+<ul>
+<li>An indented line is a parameter of its parent.</li>
+<li>Later terms on a line are parameters of the first term.</li>
+<li>A line with exactly one term, and no child lines,
+is simply that term; multiple terms are wrapped into a list.</li>
+<li>A line beginning with an abbreviation (such as <tt>&#39;</tt>),
+followed by space or tab, abbreviates the rest of the expression.
+</ul>
+
+<p>These basic rules seem fairly intuitive and do not take long to learn.
+We&#8217;re grateful to the SRFI-49 author for his work, and at first, we just
+used SRFI-49 directly.</p>
+
+<p>
+However, SRFI-49 turned out to have problems in practice when
+we tried to use it seriously.
+For example,
+in SRFI-49, leading blank lines could produce the empty list <tt>()</tt>
+instead of being ignored,
+limiting the use of blank lines and leading to easy-to-create errors.
+As specified, a SRFI-49 expression would never complete
+until after the next expressions&#8217;s first line was entered, making
+interactive use extremely unpleasant.
+Lines with just spaces and tabs would be considered different from blank
+lines, creating another opportunity for difficult-to-find errors.
+The symbol <tt>group</tt> is given a special meaning, which is
+inconsistent with the rest of Lisp
+(where only punctuation has special syntactic meanings).
+The mechanism for escaping the <tt>group</tt> symbol was confusing.
+There were also a number of defects in both its
+specification and implementation.
+</p>
+
+<p>
+Thus, based on experience and experimentation we made several
+changes to it.
+First, we fixed the problems listed above.
+We also addressed supporting other capabilities, namely,
+infix notation and allowing formats like <tt>f(x)</tt>
+(see neoteric expressions as defined in SRFI-105).
+We also found that certain constructs were somewhat ugly if indentation
+is required, so we added sublists, split, and collecting list capabilities.
+</p>
+
+<p>
+The very existence of SRFI-49 shows that others believe
+there is value in using syntactically-significant indentation.
+We are building on the experience of others to create what we hope
+is a useful and refined notation.
+</p>
+
+<h3 id="separate-105">Why are sweet-expressions separate from curly-infix and neoteric-expressions as defined in SRFI-105?</h3>
+<p>
+Some Scheme users and implementers may not want indentation-sensitive
+syntax, or may not want to accept any change that could change the
+interpretation of a legal (though poorly-formatted) s-expression.
+For those users and implementers, SRFI-105 adds
+infix support and neoteric-expressions such as <tt>f(x)</tt>, but
+only within curly braces {...}, which are not defined by the Scheme
+specification anyway.
+SRFI-105 makes it easier to describe the &#8220;leaves&#8221; of an
+s-expression tree.
+</p>
+<p>
+In contrast, sweet-expressions extend SRFI-105 by
+making it easier to describe the larger
+structure of an s-expression.
+It does this by treating indentation (which is usually
+present anyway) as syntactically relevant.
+Sweet-expressions also allow neoteric-expressions
+outside any curly braces.
+By making sweet-expressions a separate tier,
+people can adopt curly-infix if they don&#8217;t
+want indentation to have a syntactic meaning
+or want to ensure that <tt>f(x)</tt> is interpreted as two separate
+datums (<tt>f</tt> and <tt>(x)</tt>).
+</p>
+<h3 id="writing-out-results">Writing out results</h3>
+<p>An obvious question
+is, &#8220;how do you write them out?&#8221;
+After all, with these notations there is
+more than one way to present expressions.</p>
+
+<p>But no Lisp guarantees
+that what it writes out is the same sequence of characters that was
+written.  For example, <tt>(quote&nbsp;x)</tt>
+when read might be written back
+as <tt>'x</tt>, while on others, reading
+<tt>'y</tt> might be printed as <tt>(quote&nbsp;y)</tt>.
+Similarly, if you enter <tt>(a&nbsp;.&nbsp;(b&nbsp;.&nbsp;()))</tt>,
+many Lisps will write that back as &#8220;(a&nbsp;b)&#8221;.
+Nothing has fundamentally changed;
+as always, you should implement your Lisp expression writer so that
+it presents a format convenient to both human and machine readers.</p>
+
+<h3 id="backwards-compatibility">Backwards compatibility</h3>
+
+<p>Backwards compatibility with traditional Lisp notation is helpful.
+A reader that can also read traditional s-expressions, formatted
+conventionally, is much easier to switch to.
+</p>
+
+<p>
+The sweet-expression notation is fully backwards-compatible with
+<em>well-formatted</em> Lisp s-expressions.
+Thus, a user can enable sweet-expressions and continue to read and
+process traditionally-formatted s-expressions as well.
+If an s-expression is so badly formatted that it
+would be interpreted differently, that s-expression could first be sent
+through a traditional s-expression pretty-printer and have the
+problem resolved.
+</p>
+<p>
+The changes that can cause a difference in interpretation are due
+to the active use of neoteric-expressions outside of {...},
+unlike SRFI-105, and because of the indentation processing.
+</p>
+<p>
+Neoteric-expressions
+are compatible for &#8220;normal&#8221; formatting.
+The key issue is that neoteric-expressions change
+the meaning of an opening parenthesis, bracket, or brace
+after a character other than whitespace or another opening character.
+For example, <samp>a(b)</samp> becomes
+the single expressions &#8220;(a&nbsp;b)&#8221; in sweet-expressions,
+not the two expressions &#8220;a&#8221; followed later by &#8220;(b)&#8221;.
+There are millions of lines of Lisp code that would never
+see the difference.
+So if you wrote &#8220;<samp>a(b)</samp>&#8221; expecting it to be
+&#8220;<samp>a&nbsp;(b)</samp>&#8221;,
+you will need to insert the space before the opening parenthesis.
+We believe such s-expressions are poorly (and misleadingly) formatted
+in the first place;
+you should write
+&#8220;<samp>a&nbsp;(b)</samp>&#8221; if you intend for these to be
+two separate datums.
+</p>
+<p>
+Sweet-expressions add
+indentation processing, but since indentation is disabled inside (...),
+and initial indentation also disables indentation processing,
+ordinary Lisp expressions immediately disable indentation processing and
+typically don&#8217;t cause issues.
+In rare circumstances they can be interpreted differently:
+</p>
+<ul>
+<li>If you have a <em>top-level</em> expression
+with more than one datum on a line <em>and</em> the line doesn&#8217;t begin
+with space/tab, they will be interpreted differently.
+Thus, at the topmost level, &#8220;<samp>(a)&nbsp;(b)</samp>&#8221;
+on one line
+is interpreted as two datums &#8220;<samp>(a)</samp>&#8221;
+followed by &#8220;<samp>(b)</samp>&#8221; in traditional
+Lisp, but this is a single &#8220;<samp>((a)&nbsp;(b))</samp>&#8221;
+in sweet-expressions.
+Note that this interpretation is also disabled by any indentation, so just
+inserting a space on those rare lines where this occurs
+<em>ensures</em> compatibility with the
+sweet-expression indentation processing.
+</li>
+<li>Sweet-expressions also count &#8220;!&#8221; at the beginning of a line as
+an indent character.  This rarely causes any issue, since once you
+use an open parenthesis to start an expression any this meaning for
+&#8220;!&#8221; is disabled.
+In addition, the first character on a line other than space, tab, or
+&#8220;!&#8221; also disables this interpretation on that line.
+Generally, you&#8217;d have to have a symbol whose name
+<em>starts</em> with &#8220;!&#8221; before any issue could come up
+(such symbols are unusual), and then use them directly at the top level
+to retrieve its value (which would also be unusual).</li>
+</ul>
+
+
+<h2 id="whitespace-indentation-comment">Whitespace, indentation, and comment handling</h2>
+<p>
+The following subsections describe the specific
+sweet-expression constructs related to whitespace, indentation,
+and comment handling, including why they are defined the way they are.
+</p>
+
+<h3 id="blank-lines">Blank lines</h3>
+
+<p>In sweet-expressions, a blank line
+always terminates a datum, once an expression has started;
+if (another) expression has not started, blank lines are ignored.
+That means that in a REPL,
+once you&#8217;ve entered a complete expression,
+&#8220;Enter Enter&#8221; will always end it.
+The &#8220;blank
+lines at the beginning are ignored&#8221; rule eliminates a usability problem
+with the original SRFI-49 (I-expression) spec, in which two sequential
+blank lines before an expression surprisingly returned ().
+This was a serious usability problem.
+The sample
+implementation <em>did</em> end expressions on a blank line - the problem
+was that the spec didn&#8217;t clearly capture this.</p>
+
+<p>
+Allowing a blank line to end an expression
+represents a trade-off between REPL use and use in a file.
+In a file, a top-level expression could be determined simply by noting
+that the next expression began on the left column.
+But this would be hideous to use in a REPL, because it would mean
+that the results of an expression would only be evaluated after the
+first (and possibly only) line of the next expression was entered.
+(Early Pascal I/O implementations had similar problems.)
+</p>
+<p>
+One solution is to have a special text marker that means &#8220;done&#8221;
+(e.g., &#8220;.&#8221; on a line by itself), but this makes interactive use
+much less pleasant, since users then have to repeatedly
+type the special &#8220;end-of-expression&#8221; marker.
+As <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00916.html">
+Beni Cherniavsky-Paskin observed on the readable-discuss mailing list
+(2013-01-16)</a>,
+&#8220;I absolutely hate SQL prompts that don&#8217;t execute until I add a ;&#8221;.
+Another solution, already in sweet-expressions, is
+quickly executing one-line commands by
+typing an indent character first.
+But users will often not know exactly how long an expression
+will be until it is done, so this does not help enough.
+</p>
+<p>
+In contrast, pressing Enter twice is quite easy (since the user&#8217;s
+finger is already on Enter to press it the first time).
+Thus, the blank line rule is intentionally chosen to help interactive users,
+at a mild cost to non-interactive users (who then cannot use blank lines
+without ending the expression).
+</p>
+
+<p>It would be possible
+to have blank lines end an expression only in interactive use.
+In particular, Python does this, since it
+has different rules for interactive use and files.
+However, this means that you couldn&#8217;t cut-and-paste files into
+the REPL interpreter and use them directly.
+David A. Wheeler
+believes it&#8217;s important to have exactly
+the same syntax in both cases in a Lisp-based system, because
+in Lisp-based systems, switching between
+the REPL and files is extremely common.
+By making &#8220;Enter Enter&#8221; <em>always</em> end an expression,
+the notation stays consistent.</p>
+
+<p>Of course, people sometimes want to have something like
+a blank line in the middle of an s-expression.
+The solution is that comment-only lines using &#8220;;&#8221;
+(indented or not) are completely ignored and not even considered blank lines.
+That means you can use comment-only lines for the purpose
+of separating sections in a single datum.
+The indentation of comment-only lines is intentionally ignored;
+that way, you don&#8217;t have to worry about
+making sure that comment indentation matches its surroundings.
+We&#8217;ve found that in practice this works very well.
+In very long expressions (e.g., for a set of definitions in a library),
+a collecting list can typically be used.
+</p>
+
+<p>Since a line with only indentation may look exactly identical to a
+blank line, we decided to clearly state that
+&#8220;a line with only indentation is an empty line&#8221;.
+This eliminates some nasty usability problems that
+could arise if a &#8220;blank&#8221; line was interpreted differently
+if it had some whitespace in it;
+a silent error like this could be hard to debug.</p>
+
+<h3 id="trailing-hspace">Trailing horizontal spaces are ignored</h3>
+<p>
+It is not possible to see trailing horizontal space on most screens
+and printouts.
+Thus, the BNF is defined so that in most cases trailing horizontal space
+is ignored
+(except in special cases such as being inside a string constant).
+</p>
+
+<h3 id="indentation-characters">Indentation characters (! as indent)</h3>
+<p>Some
+like to use spaces to indent; others like tabs.  Python allows either,
+and SRFI-49 allows either as well - you just have to be consistent.
+Sweet-expressions continues this tradition, and
+is defined so that people can use what they like.
+The only rule is that they must be consistent; if a line is indented with
+eight spaces, the next line cannot be indented with a tab.</p>
+
+<p>One objection that people raise about mandatory indentation
+is that horizontal whitespace can get lost in many transports
+(HTML readers, etc.).
+In addition, sometimes there are indented groups that you&#8217;d
+like to highlight; traditional whitespace indentation provides no
+opportunity to highlight indented groups specially.
+When discussing syntax,
+users on the readable-discuss mailing list started to use characters
+(initially period+space) to show where indentation occurred so that they
+wouldn&#8217;t get lost or to highlight them.
+Eventually, the idea was hit upon that perhaps sweet-expressions
+needed to support a <em>non-whitespace</em> character for indentation.
+This is highly unorthodox, but at a stroke it eliminates the complaints
+some have about syntactically-important indentation (because it is
+lost by some transports), and it also provides an
+easy way to highlight particular indented groups.</p>
+
+<p>At first, we tried
+to use period, or period+space, as the indent, as this was vaguely
+similar to its use in some tables of contents.
+But period has too many
+other traditional meanings in Lisp-like languages, including beginning
+a number (.9), beginning a symbol (...), and as a special operator to
+set the cdr of a list.
+Implementation of period as an indent character
+is much easier if there is a way to perform two-character lookahead
+(e.g., with an <code>unread-char</code> function),
+but <code>unread-char</code> is not standard in Scheme R5RS,
+<a href='http://www.lispworks.com/documentation/HyperSpec/Issues/iss356_w.htm'>and Common Lisp does not mandate support for two-character lookahead</a>.
+Eventually the &#8220;!&#8221; was selected instead; it
+practically never begins a line, and if you need it, {!...} will work.
+The exclamation point is much easier to implement as an indent character,
+and it is also a great character for highlighting indented groups.</p>
+
+<h3 id="disabling-indentation-processing-with-paired-characters">Disabling
+indentation processing with paired characters</h3>
+
+<p>Indentation
+processing is disabled inside (...), [ ... ], and { ... }.
+This was also true
+of SRFI-49, and of Python, and has wonderful side-effects:</p> <ul>
+<li>Indent parsing becomes very safe to use with existing code.
+Pre-existing code will almost certainly start each expression with
+an opening parenthesis, disabling the indentation processing it
+wasn&#8217;t expecting.</li>
+<li>It makes it easy to disable indentation
+processing whenever it is inconvenient.  For example, it supports
+dealing with text that is very close to running off the right-hand
+side, or is complex to express with indentation.</li>
+<li>It is similar to what other indentation-sensitive languages do, such
+as Python.</li>
+<li>It is a very easy rule to explain, remember, and reason about.</li>
+</ul>
+
+<p>This means that infix processing by curly-infix disables indentation
+processing; in practice this doesn&#8217;t seem to be a problem.</p>
+
+<h3 id="disabling-indentation-processing-with-an-initial-indent">Disabling
+indentation processing with an initial indent</h3>
+
+<p>Initial indentation also disables indentation processing,
+which also improves backward
+compatibility and makes it easy to disable indentation processing where
+convenient.</p>
+
+<p>This improves backward compatibility because a program
+that uses odd formatting with a different meaning for sweet-expressions
+is more likely to have initial indents.
+Even if this is not
+true, it&#8217;s trivially easy to add an initial indent on oddly-formatted
+old files. This provides a trivial escape, making it easy to support
+old files.  Then even if you have ancient code with odd formatting,
+it would be likely to still &#8220;just work&#8221;
+if there is any initial indentation.
+We&#8217;d like this reader to be a drop-in replacement for read(),
+so minimizing incompatibilities is important.</p>
+
+<p>There is a risk that this
+indentation will be accidental (e.g., a user might enter a blank line in
+the middle of a routine and then start the next line indented).  However,
+this is less likely to happen interactively (users can typically see
+something happened immediately), and editors can easily detect and show
+where surprising indentation is occurring (e.g., through highlighting),
+so this risk appears to be minimal.</p>
+
+<p>Disabling on initial indent
+also deals with a subtle problem in implementation.
+We would create significant reader implementation problems
+if we tried to accept expressions
+that began with arbitrary indentation on the first line
+(using that indentation as the starting point).
+Typically readers return a whole value once that value has been
+determined, and in many cases it&#8217;s tricky to store state (such as that
+new indentation value) for an arbitrary port.  By disabling indentation
+processing, we eliminate the need to store such state, as well as giving
+users a useful tool.</p>
+
+<p>Since this latter point isn&#8217;t obvious, here&#8217;s
+a little more detailed explanation.  Obviously, to make indentation
+syntactically meaningful, you need to know where an expression indents,
+and where it ends.
+If you read in a line, and it has the same indentation
+level, that should end the previous expression.
+If its indentation is <em>less</em>,
+it should close out all the lines with deeper or equal indentation.
+But we&#8217;re trying to <em>minimize</em> the changes to the
+underlying language, and in particular, we don&#8217;t want
+to change the &#8220;read&#8221;
+interface and we&#8217;re not assuming arbitrary amounts of unread-char.
+Scheme R5RS, for example, doesn&#8217;t have a standard unread-char at all.
+Now imagine that the implementation tries to support
+arbitrary indentatation for the initial line of an expression
+(instead of requiring that expressions normally start at the left edge).
+Let&#8217;s say you are trying to read the following:</p>
+<pre>
+! ! foo
+! ! ! bar
+! ! eggs
+! ! cheese
+</pre>
+<p>You might expect this to
+return three datums: (foo bar), eggs, and cheese.
+It won&#8217;t, in a typical implementation; here&#8217;s why:
+<ul>
+<li>
+In the first read(), it reads foo, bar, and it
+consumes the indentation of &#8220;eggs&#8221; so that it can determine that another
+is at the same level. It returns (foo bar).</li>
+<li>In the second read(), it reads
+eggs with NO indentation, because the indentation was consumed by the
+first read() so it could determine when it was finished. It then reads
+the indentation of cheese, which has an indentation more than zero. It
+returns (eggs cheese), and we&#8217;ve consumed it all.</li>
+</ul>
+
+<p>Some solutions:</p>
+<ul>
+<li>If you have unlimited unread-char, there is no problem, just
+unconsume characters once you&#8217;ve found the end. But many Lisps don&#8217;t have
+that.</li>
+<li>Read could store indentation state associated with the
+port. But the user could call other routines, and a naive implementation
+would read the wrong values. You&#8217;d have to re-wrap the entire I/O system
+if you really wanted to be able to undo the indentation reliably. That
+creates a complicated implementation that is likely to be unreliable,
+and it&#8217;s lousy for performance.</li>
+</ul>
+<p>So for all the reasons
+above, initial indent disables indentation processing for that line.</p>
+
+<h3 id="block-comment-indent-significant">Why are the indentations of block comments and datum comments significant?</h3>
+<p>
+A line that starts with a <code>;</code> after
+the indent is completely ignored,
+including the indent of that line.
+In contrast, a line that starts with
+a <code>#;</code> datum comment
+or a <code>#|</code> ... <code>|#</code> block comment
+after a possible indent is considered
+to be indented
+at the position where the comment starts.
+This means that
+in sweet-expressions,
+<code>;</code> line comments
+have a subtly different semantic meaning
+from datum or block comments.
+</p>
+<p>
+These are the reasons for this difference between line comments
+and datum or block comments:
+</p>
+<ol>
+<li>
+For block comments,
+it would be possible to write a comment
+that includes a newline,
+then some more comment text,
+then the <code>|#</code> terminator for block comments,
+followed by ordinary datums.
+We could have declared that block comments
+that include newlines would have the comment-only lines deleted,
+and block comments would have each character replaced with a space.
+For example:
+<table border="1">
+<tr><th>Original</th>
+<th>Could&#8217;ve mapped to (but doesn&#8217;t!)</th></tr>
+<tr>
+<td>
+<pre>
+foo
+ #|comment #1|# bar
+ #|comment #2|# quux
+</pre>
+</td>
+<td>
+<pre>
+foo
+                bar
+                quux
+</pre>
+</td>
+</tr>
+<tr>
+<td>
+<pre>
+foo
+#| block
+comment |# bar
+           quux
+</pre>
+</td>
+<td>
+<pre>
+foo
+           bar
+           quux
+</pre>
+</td>
+</tr>
+</table>
+But what if Chinese, Japanese, or Korean double-width characters
+are found?
+The sensible approach would be to require
+that double-width characters
+be replaced with two spaces rather than one,
+but this requires implementations to know those characters
+and replace them differently.
+It was judged to be a significant implementation overhead,
+for what is essentially an edge case,
+for a style that we felt
+utterly defeats the clarity of indentation.
+Instead, we mandate that block comments
+are simply deleted outright.
+</li>
+<li>
+Outright deleting comments
+makes the meaning of the sequence
+&#8220;indent, block/datum comment, space, datum&#8221;
+misleading.
+For example:
+<pre>
+foo
+    bar
+    #| ...
+|#  quux
+</pre>
+A simple &#8220;outright delete&#8221; would yield:
+<pre>
+foo
+    bar
+      quux
+</pre>
+This is arguably a misleading translation.
+</li>
+<li>
+Further, our expected use case for block comments would 
+look like this:
+<pre>
+define foo(x)
+  #|
+   | First, bar the x.
+   | Then quux it so that x is no longer xuuq-able
+   |#
+  bar x
+  quux x #| Need to quux here
+          | to prevent conflicting with
+          | the bar table
+          |#
+</pre>
+Again, a simple &#8220;outright delete&#8221;
+would yield an empty line
+right after the &#8220;<code>define foo(x)</code>&#8221; line.
+Instead, what we mandate is that,
+if a block or datum comment immediately follows indentation,
+it is deleted outright,
+and replaced with GROUP/SPLIT (<code>\\</code>).
+Block or datum comments that do not follow indentation
+are simply deleted without being replaced with anything:
+<table border=1>
+<tr><th>Original</th><th>Maps to</th></tr>
+<tr>
+<td>
+<pre>
+define foo(x)
+  #|
+   | standalone comment
+   |#
+  #| pre-comment |# bar #| in-comment |# quux
+</pre>
+</td>
+<td>
+<pre>
+define foo(x)
+  \\
+  \\ bar  quux
+</pre>
+</td>
+</tr>
+</table>
+</li>
+</ol>
+
+<p>
+Although the reasons above pertain mostly to block comments,
+datum comments (<code>#;</code>) are considered
+essentially identical to block comments.
+</p>
+<p>
+We could have mandated a different behavior between datum
+and block comments.
+But it is helpful to review the <em>reason</em>
+for the existence of datum comments.
+There are two major use cases:
+</p>
+<ol>
+<li>
+To just comment out a single, short item from a list.
+<pre>(foo bar #;quux meow)</pre>
+</li>
+<li>
+To easily remove the last item of a multi-line list,
+where that item is itself several lines:
+<pre>
+(define (foo x)
+  (if (not (foo-able? x))
+    (error "Cannot foo the " x)
+    (begin
+      (en-bar x)
+      ; quuxing is currently buggy
+      #;(quux
+        (barred-form x)
+        (co-barred-form x)
+        (de-xuuqed x)))))
+</pre>
+</li>
+</ol>
+<p>
+For the last case, while typically a multi-line list
+is commented out by using <code>;</code> line comments,
+in standard s-expression syntax all closing parentheses
+are &#8220;piled on&#8221; to the last line.
+Using just <code>;</code> would also comment out
+the closing parentheses of
+<code>begin</code>, <code>if</code>, and <code>define</code>.
+</p>
+<p>
+But with sweet-expressions,
+there are no explicit closing parentheses.
+In sweet-expression form, using line comments suffices:
+</p>
+<pre>
+define foo(x)
+  if not(foo-able?(x))
+    error "Cannot foo the " x
+    begin
+      en-bar x
+      ; quuxing is currently buggy
+      ;;quux
+      ;;  barred-form x
+      ;;  co-barred-form x
+      ;;  de-xuuqed x
+</pre>
+<p>
+Thus, the expected use case of datum comments
+in sweet-expressions
+is limited to the first case,
+i.e. commenting-out a single short item.
+</p>
+<p>
+Since this first case can be handled sufficiently well
+by having datum comments
+take on the same behavior as block comments
+(i.e. delete outright, if at start of line after
+indent replace with <code>\\</code>)
+then it was considered simpler
+to just use the same behavior for both.
+</p>
+
+<h3 id="eol">End-of-line (EOL) handling</h3>
+<p>
+This SRFI only requires support for the end-of-line
+sequences linefeed (LF), carriage return (CR), and CRLF.
+Earlier versions also supported reversed LFCR,
+IBM&#8217;s NEL (U+0085), Unicode line-separator (LS, U+2028), and
+Unicode paragraph-separator (PS, U+2029),
+but these have been dropped.
+This is because in practice the only end-of-line markers
+that are used in practice
+are LF, CR, and CRLF.
+For example, these are the only end-of-line markers included in
+Scheme R7RS draft 9.
+</p>
+<p>
+John Cowan posted on 2013-02-28 that,
+&#8220;NEL is used only on EBCDIC systems, and conversion to ASCII
+usually changes it to LF rather than U+0085.
+LS was Unicode&#8217;s attempt
+to kill CR/LF/CR+LF, which failed completely...&#8221;
+The same problem applies to PS, which is not used in practice.
+</p>
+
+<!--
+John Cowan posted on 2013-02-28,
+"Take it from the guy at the sharp point of the XML 1.1 mess:
+the only newlines anyone cares about are CR, LF, and CR+LF,
+and even CR is obsolescent.
+NEL is used only on EBCDIC systems, and conversion to ASCII
+usually changes it to LF rather than U+0085. LS was Unicode's attempt
+to kill CR/LF/CR+LF, which failed completely..."
+-->
+
+<p>
+Reversed LFCR does not happen in practice, and attempting to
+detect it triggers a bug in many versions of the
+guile implementation of Scheme.
+In many versions of guile, peek-char consumes (instead of just peeking)
+an end-of-file (EOF) marker
+(<a href="http://debbugs.gnu.org/cgi/bugreport.cgi?bug=12216">bug 12216</a>).
+Thus, after seeing an LF, peeking to see if there is a CR
+would consume any EOF after an LF, making ending interactive
+use awkward on systems that use just LF for end-of-line.
+</p>
+
+
+<h3 id="eof">End-of-file (EOF) handling</h3>
+<p>
+Non-empty files must end with an end-of-line sequence, before any
+end-of-file (EOF) marker, to be portable sweet-expression files.
+This limitation greatly simplifies the
+specification and implementation of a sweet-expression reader,
+without limiting the data that sweet-expressions can represent.
+In practice, text editors normally create such files anyway, so
+this is not a serious limitation.
+</p>
+<p>
+This requirement is not unique to sweet-expressions.
+For example, several versions of the C language standard say
+&#8220;A source file that is not empty shall end in a new-line character,
+which shall not be immediately preceded by a backslash character&#8221;
+(section 2.1.1.2 of the ANSI C 1989 standard,
+section 5.1.1.2 of the ISO C 1999 standard, and
+section 5.1.1.2 of the ISO/IEC C 2011 standard ISO/IEC 9899:2011).
+</p>
+<p>
+Sweet-expression reader implementations are free to warn about files
+that fail to meet this requirement.
+Sweet-expression reader implementations are also free to support files
+that do not meet this limitation.
+The sample reader accepts, in most cases, files that end without
+a preceding end-of-line sequence.
+</p>
+
+
+<h3 id="semicolon">Special semicolon values for an unsweetener</h3>
+
+<p>
+As described in the specification,
+a tool (called an &#8220;unsweetener&#8221;)
+that reads sweet-expressions and writes out
+s-expressions <em>SHOULD</em> specially treat certain lines
+that begin with semicolons.
+</p>
+
+<p>
+The initial-semicolon rules for &#8220;;&#8221; followed by space or semicolon
+are given so that some comments - particularly
+the ones about major new components -
+are likely to be included in a translation from sweet-expressions to
+s-expressions (namely, any comments that precede an expression).
+This can greatly simplify examining the generated s-expression.
+The rules about &#8220;;#&#8221;, &#8220;;!&#8221;, and &#8220;;_&#8221;
+make it easier to write shell scripts and similar constructs
+with embedded sweet-expressions; these
+lines can invoke some Scheme interpreter, possibly via a shell.
+</p>
+
+<p>
+This text is limited to only apply to lines outside of any sweet-expression.
+This is intentional, because this makes it easy to implement
+an unsweetener on top of an existing existing sweet-expression reader.
+The top-level unsweetener
+tool can simply see if a line begins with semicolon, and if
+it does, handle it specially;
+if it starts with an end-of-line, it can just copy it, and
+if a line starts with any other character it can call the sweet-expression
+reader to handle it.
+There is no requirement to copy block comments, or comments inside
+a sweet-expression datum, because this would be much more complicated to do;
+handling block comments is non-trivial functionality that a sweet-expression
+reader must perform, and there is no standard way to return comments
+inside a datum.
+Semicolon comments immediately after a datum need not be copied or
+processed specially, because a sweet-expression reader
+has to consume them to see if it&#8217;s reached the end of the datum.
+A Scheme implementation with unlimited unread could do more with relative ease,
+but since many Scheme implementations do not have unlimited unread, these
+limitations make implementation of such tools much simpler.
+</p>
+
+<p>
+These rules are based on the <i>unsweeten</i> tool.
+</p>
+
+<h2 id="specific-constructs">Other specific sweet-expression constructs</h2>
+<p>
+The following subsections describe other specific
+sweet-expression constructs, including why they are defined the
+way they are.
+</p>
+
+<h3 id="sweet">The #!sweet marker</h3>
+
+<p>
+The marker <code>#!sweet</code> is intended to be used
+before any sweet-expressions.
+This improves backwards compatibility; readers can by default
+read only traditional s-expressions, and only change when they
+receive <code>#!sweet</code>.
+Readers are allowed, but not required, to accept sweet-expressions
+before this marker.
+</p>
+
+<p>
+The marker <code>#!sweet</code> was chosen as an analogy
+to similar markers, such as
+<code>#!fold-case</code> and <code>#!no-fold-case</code>
+(R6RS and R7RS),
+<code>#!r6rs</code> (R6RS), and
+<code>#!curly-infix</code> (SRFI-105).
+</p>
+
+<p>
+A list expression such as <code>(srfi&nbsp;110)</code>
+was intentionally <i>not</i> used.
+If this was used, a reader would not be able to easily
+distinguish between (1) a list to read and
+(2) a command to change modes.
+Also, not all Scheme systems support ways to invoke SRFIs,
+or even a module system, and there are many module systems in use.
+A special marker avoids these issues.
+</p>
+
+<p>
+On 2013-03-07 Jos Koot reported that this should work well
+with Racket, a popular Scheme implementation.
+Racket&#8217;s documents say:
+&#8220;#! is an alias for #lang followed by a space when #! is followed by
+alphanumeric ASCII, +, -, or _.
+Use of this alias is discouraged except as
+needed to construct programs that conform to certain grammars,
+such as that of R6RS [Sperber07].&#8221;
+Since <code>#!sweet</code> is indeed defined by a grammar,
+this is consistent.
+Jos Koot continues,
+&#8220;I see no problem here for an implementation in Racket.&#8221;
+</p>
+
+<h3 id="grouping-and-splitting">Grouping and splitting (\\)</h3>
+<p>SFRI-49
+had a mechanism for defining lists of lists,
+using the symbol &#8220;group&#8221;.
+This was a valuable contribution, since there needs to be <em>some</em>
+way to show lists of lists.
+</p>
+<p>
+But after use, it was determined that having
+an alphabetic symbol being used to indicate a special abbreviation was
+a mistake.
+All other syntactically-special abbreviations in Lisp are
+written using punctuation; having one that was not was confusing.
+This symbol is still called the GROUP symbol,
+and happens at the start of a line (after indentation)... it is
+just now respelled as \\.</p>
+<p>
+For example, this GROUP symbol
+makes it easy to handle multiple variables in a
+<tt>let</tt> expression:
+</p>
+<pre>
+let*
+  \\
+    variable1 my(value1)
+    variable2 my(value2)
+  do-stuff1 variable1
+  do-stuff2 variable1 variable2
+</pre>
+
+<p>A different problem is that sometimes you&#8217;d
+like to have a set of parameters,
+where they are at the &#8220;same level&#8221; but
+writing them as indented parameters takes up too much vertical space.
+An obvious example is keywords in various Lisps; having to write this
+is painful:
+</p>
+<pre>
+foo
+  keyword1:
+  parameter1
+  keyword2:
+  parameter2
+  ....
+</pre>
+<p>
+David A. Wheeler created an early splicing proposal.
+After much discussion, to solve the latter problem, the SPLIT symbol was created, so that you could do:
+</p>
+<pre>
+foo
+  keyword1: \\ parameter1
+  keyword2: \\ parameter2
+  ....
+</pre>
+
+<p>
+Or, equivalently:
+</p>
+<pre>
+foo
+  keyword1:
+  \\   parameter1
+  keyword2:
+  \\   parameter2
+</pre>
+
+<p>At first the symbol \ was used for SPLIT, but this
+would cause serious problem on Lisps that supported slashification.
+After long discussion, the symbol \\ was decided on for both; although
+the number of characters in the underlying symbol could vary (depending on
+whether or not slashification was used), this was irrelevant and seemed to
+work everywhere.  By using the same symbol for both GROUP and SPLIT, we
+reduced the number of different symbols that users needed to escape.</p>
+
+<p>We dropped the SRFI-49 method for escaping the symbol by repeating
+it (group group); the {} escape mechanism is more regular, and
+makes it far more obvious that some special escape is going on.</p>
+
+<h3 id="initial-group-mean-nothing">Why does initial \\ mean nothing
+if there are datums afterwards on the same line?</h3>
+<p>Since &#8220;let&#8221; occurs in many programs,
+it would have been possible to define \\ to allow this:</p>
+<pre>
+let
+! \\ var1 $ bar x
+! !  var2 $ quux x
+! nitz var1 var2
+</pre>
+<p>
+We discussed this, but after long discussion we decided against this.
+There are other ways handling constructs like multi-variable let, also,
+if the first variable later has a more complex expression it
+cannot be so easily extended with indentation.
+Instead, we decided on defining &#8220;\\&#8221; as an empty symbol,
+making that expression exactly the same as:
+</p>
+<pre>
+let
+! var1 $ bar x
+! !  var2 $ quux x
+! nitz var1 var2
+; =&gt;
+;   (let (var1 (bar x (var2 (quux x))))
+;      (nitz var1 var2))
+</pre>
+
+<p>We did this
+intentionally.  It turns out that there are situations where you want a \\
+as an empty symbol, even when text follows it on the line.  An example is
+arc&#8217;s if-then-else, where there are <em>logically</em> pairs of items,
+but from a <em>list</em> semantic are at the same level. E.G.:</p>
+<pre>
+if
+! condition1()
+! \\ action1()
+! condition2()
+! \\ action2()
+! \\ otherwise-action()
+</pre>
+<p>
+For a more Scheme-centric viewpoint,
+some Scheme implementations use keyword objects.
+For example, in Guile, module declarations look like:
+</p>
+<pre>
+define-module
+! \\ amkg cat meow
+! #:use-module
+! \\ amkg dog woof
+! #:export
+! \\ (meow hiss)
+</pre>
+
+<p>
+As noted earlier, there are other ways handling constructs
+like multi-variable let.
+You can use an empty GROUP symbol to achieve the same effect
+(at the cost of one more line).
+Also, the collecting list notation (&lt;*...*&gt;) handles short
+let variable assignment in a more graceful way.
+Thus, there was no strong reason to use the first semantic
+while there were many good reasons to
+choose the semantic actually chosen.
+</p>
+
+
+<h3 id="traditional-abbreviations">Traditional abbreviations</h3>
+
+<p>As with SRFI-49, a leading traditional
+abbreviation (quote, comma, backquote, or comma-at) right after any indent,
+and followed by space or tab, is that operator
+applied to the sweet-expression starting at the same line.
+For example, a complex indented structure can be
+quoted simply by prefixing a single quote and space.
+This makes it easy to add abbreviations to complex indented structures.
+An abbreviation alone on a line (after indentation), followed by
+an indented expression, applies that abbreviation to the expression;
+this seems to be what &#8220;users expect&#8221;, and supporting it
+eliminates a potential source of confusion.
+</p>
+
+<h3 id="sublist">Sublist ($)</h3>
+
+<p><a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00401.html">
+On 2012-07-18, Alan Manuel Gloria
+noted that certain constructs were common and annoying to express</a>,
+e.g., <samp>first(second(third(fourth)))</samp>,
+and based on Haskell experience,
+suggested being able to write them as
+<samp>first $ second $ third(fourth)</samp>.
+Again, the idea is that this is an abbreviation for a common-enough
+practice.</p>
+
+<p>This is another example (like GROUP/SPLIT) of a
+construct that, when you need it, is incredibly useful.
+It&#8217;s not
+all that unusual to have a few processing or cleanup functions that
+take a single argument, and for all the &#8220;real work&#8221; to be nested
+in something else.
+This would require several levels of indentation
+without sublist, but they are easily handled with sublist.
+</p>
+<p>
+An example is
+scsh, which has functions like &#8220;run&#8221; that are applied to
+another list.
+With sublist, this is easily expressed.
+For example, here&#8217;s a sweet-expression using scsh:
+</p>
+<pre>
+  run $ grep |-v| "xx.*zz" &lt;(oldfile) &gt;(newfile)
+</pre>
+
+<p>
+(Oh, and a brief aside:
+For full Scheme standards compliance, you should escape any symbol
+beginning with &#8220;-&#8221; by surrounding it with |...|.
+One problem is that RnRS does not require support for <i>any</i>
+symbols that start with &#8220;-&#8221;,
+as they are not in the set of defined <code>&lt;initial&gt;</code>.
+Many actual Schemes in practice do support such symbols,
+including the sample implementation, but such code is not portable.
+Another problem is that
+&#8220;-i&#8221; is the negated square root of 1, so
+that specific option is especially awkward.
+The sample implementation supports |...|, so |-v| would work
+and comply with the latest standards.
+Note, however, that scsh does not yet directly support |...|.
+These issues have nothing to do with sweet-expressions,
+but we thought you should know about that.)
+</p>
+
+<p>SUBLIST also makes certain idioms possible.
+For instance,
+some functions need to change their behavior
+based on the type of the inputs.
+Here&#8217;s an example, a definition that could take advantage of
+SRFI-105&#8217;s <var>$bracket-apply$</var>:
+</p>
+
+<pre>
+define c[i]
+  cond
+    vector?(c)
+      vector-ref c i
+    string?(c)
+      string-ref c i
+    pair?(c)
+      list-ref c i
+    else
+      error "Not a collection"
+</pre>
+
+<p>
+This function shows a common occurrence
+in Scheme programming:
+A function that immediately begins with <code>cond</code>.
+The formatting of <code>cond</code> above, however,
+has several lines that consist of a single n-expression item
+(e.g. &#8220;<code>cond</code>&#8221;, &#8220;<code>else</code>&#8221;,
+&#8220;<code>string?(c)</code>&#8221;, etc.).
+</p>
+
+<p>
+Vertical space is precious.
+Using SUBLIST,
+we can compress the code to:
+</p>
+
+<pre>
+define c[i] $ cond
+  vector?(c) $ vector-ref c i
+  string?(c) $ string-ref c i
+  pair?(c)   $ list-ref c i
+  else       $ error "Not a collection"
+</pre>
+
+<p>
+Arguably,
+this can be done by putting the <code>cond</code> branches
+in explicit parentheses.
+However, the idiom supported by SUBLIST is more general
+than explicit parentheses can be,
+because SUBLIST does not disable indentation processing.
+In particular,
+this idiomatic formatting of <code>cond</code> using SUBLIST
+makes possible the following code:
+</p>
+
+<pre>
+define merge(&lt; as bs) $ cond
+  null?(as)           $ bs
+  null?(bs)           $ as
+  {car(as) &lt; car(bs)} $ cons
+                         car as
+                         merge &lt; (cdr as) bs
+  else                $ cons
+                         car bs
+                         merge &lt; as (cdr bs)
+</pre>
+
+<p>
+Without SUBLIST, the more complex branches of the <code>cond</code>
+would have to be formatted differently from the simpler branches
+(unless you are willing to waste a line to write just &#8220;<code>as</code>&#8221;),
+or would be expressed in deeply-nested parentheses,
+defeating the purpose of using sweet-expressions.
+</p>
+
+<p>After discussion,
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00496.html">
+SUBLIST was accepted in 2012-07-23</a>.</p>
+
+<h3 id="single-item-sublist">Why is <code>a $ b</code> equivalent to <code>(a b)</code> rather than <code>(a (b))</code>?</h3>
+
+<p>
+When initially learning SUBLIST,
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00562.html">
+some people assume that &#8220;a $ b&#8221; should map to &#8220;(a (b))&#8221;</a>.
+However, the specification specifically does not
+yield this semantic; &#8220;a $ b&#8221; maps to &#8220;(a b)&#8221;.
+At first, some people think that this is an inconsistency.
+</p>
+<p>
+However, this is actually more consistent and produces better results.
+SUBLIST (<code>$</code>) does not imply
+that the succeeding text should be a list;
+instead, it denotes that the succeeding text
+is the <i>last argument</i> of the current line.
+</p>
+<p>
+More concretely, consider this code:
+</p>
+<pre>
+a
+  b
+    c
+      d
+</pre>
+<p>
+The sub-list starting with <code>b</code>
+is the last (and only) argument of <code>a</code>,
+the sub-list starting with <code>c</codE>
+is the last (and only) argument of <code>b</code>,
+and so on.
+</p>
+<p>
+SUBLIST allows us to compress this text
+into a shorter form:
+</p>
+<pre>
+a $ b
+  c
+    d
+</pre>
+<p>
+We can repeat this:
+</p>
+<pre>
+a $ b $ c
+  d
+</pre>
+<p>
+However, if <code>a $ b</code> is
+<code>(a (b))</code>,
+we need to stop at this point,
+because:
+</p>
+<table border=1 cellpadding=4>
+<tr><th>Original</th><th>Maps to:</th></tr>
+<tr><td>
+<pre>
+a
+  b
+</pre></td><td><pre>
+(a
+  b)
+</pre></td></tr>
+</table>
+<p>
+Since outside of SUBLIST,
+we consistently map a singleton datum
+as that datum by itself,
+SUBLIST also consistently maps a singleton datum
+as that datum by itself.
+</p>
+<p>
+By selecting this behavior,
+the example above
+can be expressed as:
+</p>
+<table border=1 cellpadding=4>
+<tr><th>Original</th><th>Equivalent to:</th><th>Maps to:</th></tr>
+<tr>
+<td><pre>
+a
+  b
+    c
+      d
+</pre></td>
+<td><pre>a $ b $ c $ d</pre></td>
+<td><pre>(a (b (c d)))</pre></td>
+</tr>
+</table>
+<p>
+This consistency is desirable;
+let&#8217;s review the <code>merge</code> example
+from the previous question:
+</p>
+<pre>
+define merge(&lt; as bs) $ cond
+  null?(as)           $ bs
+  null?(bs)           $ as
+  {car(as) &lt; car(bs)} $ cons
+                         car as
+                         merge &lt; (cdr as) bs
+  else                $ cons
+                         car bs
+                         merge &lt; as (cdr bs)
+</pre>
+<p>
+We can adopt a coding style
+where the condition and the branch code
+in a <code>cond</code> expression
+is separated consistently by a SUBLIST character.
+This consistency is impossible
+if SUBLIST always created a list
+even in the case that the right-hand side
+is a single datum.
+</p>
+
+<h3 id="collecting-lists">Collecting lists (&lt;* ... *&gt;)</h3>
+<p>
+Sweet-expressions without collecting lists (&lt;* ... *&gt;)
+work well in a vast number of circumstances.
+However, they can be somewhat awkward for two use cases:
+</p>
+<ol>
+<li>A long sequence of definitions contained within an initial statement.
+This situation occurs in many library definition structures such as
+Scheme R7RS <tt>define-library</tt> and in some larger data structures.</li>
+<li>A let-style statement with one or two variables
+with short initial values.</li>
+</ol>
+<p>
+Let&#8217;s begin with the first use case.
+When there is a long sequence of definitions contained within an
+initial statement, and no special notation like collecting lists,
+all the definitions in the long sequence must be
+indented and none can be separated by a blank line
+(since that would end the entire sequence, not just a definition).
+Indenting almost an entire file is annoying, and needing no blank lines
+for that long invites mistakes.
+</p>
+
+<p>
+For example, here&#8217;s an example from the R7RS Scheme specification
+for define-library:
+</p>
+<pre>
+(define-library
+  (example grid)
+  (export make rows cols ref each (rename put! set!))
+  (import (scheme base))
+  (begin
+    (define (make n m)
+      (let ((grid (make-vector n)))
+        (do ((i 0 (+ i 1)))
+            ((= i n) grid)
+          (let ((v (make-vector m #f alse)))
+            (vector-set! grid i v)))))
+    (define (rows grid) (vector-length grid))
+    (define (cols grid)
+      (vector-length (vector-ref grid 0)))
+    (define (ref grid n m)
+      (and (&lt; -1 n (rows grid))
+           (&lt; -1 m (cols grid))
+           (vector-ref (vector-ref grid n) m)))
+    (define (put! grid n m v)
+      (vector-set! (vector-ref grid n) m v))))
+</pre>
+<p>
+This is easily reformatted into this sweet-expression, but
+notice the long sequence of indented definitions that, if long,
+loses a lot of horizontal space and can invite mistakes:
+</p>
+<pre>
+define-library
+  example grid
+  export make rows cols ref each rename(put! set!)
+  import scheme(base)
+  begin
+    define make(n m)
+      let (grid(make-vector(n)))
+        do (i(0 {i + 1}))
+        ! {i = n} grid
+        ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
+    define rows(grid) vector-length(grid)
+    define cols(grid) vector-length(vector-ref(grid 0))
+    define ref(grid n m)
+      and
+        {-1 &lt; n &lt; rows(grid)}
+        {-1 &lt; m &lt; cols(grid)}
+        vector-ref vector-ref(grid n) m
+    define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
+</pre>
+
+<p>
+But wholesale changes to sweet-expressions do not seem warranted
+for this special case, because
+there are reasons that sweet-expressions are defined the way they are.
+It is fundamental that a child line is indented from its parent, since
+that is the point of indentation.
+Opening a parentheses intentionally disables indentation processing;
+this is what developers typically expect (note that both Python and
+SRFI-49 do this), and it also makes sweet-expressions very
+backwards-compatible with traditional s-expressions.
+Ending a definition at a blank line is very convenient for interactive use,
+and interactive and file notation should be identical
+(since people often switch between them).
+</p>
+
+<p>
+Now let&#8217;s look at the second use case.
+The sweet-expression notation cleanly handles cases where let-expression
+variables have complex values (e.g., using \\), but for simple cases
+(1-2 variables having short initial values)
+it can take up more vertical space than traditional formatting.
+Using a leading &#8220;$&#8221; takes up somewhat less vertical space, but it still
+takes up an additional line for a trivial case, it does not work
+the same way for let expressions with 2 variables,
+and David A. Wheeler thinks it is a rather unclear construction.
+In particular, you cannot use
+&#8220;$&nbsp;x&nbsp;5&nbsp;$&nbsp;y&nbsp;7&#8221;
+for a two-variable let statement; that would
+map to
+<code>((x&nbsp;5&nbsp;(y&nbsp;7)))</code>,
+not
+<code>((x&nbsp;5)&nbsp;(y&nbsp;7))</code>.
+You can also use parenthetical notation directly, but this is
+relatively ugly and it is annoying to need to do this for a common case.
+A similar argument applies to do-expressions, and these are
+not at all unusual in Scheme code:
+</p>
+<pre>
+let  ; Using \\ takes up a lot of vertical space in simple cases
+  \\
+    x 5
+  {x + x}
+
+let
+  \\
+    x 5
+    y 7
+  {x + x}
+
+let  ; Less vertical space, but works for 1 variable only
+  $ x 5
+  {x + 5}
+
+; The two-variable format can be surprising and does not let the
+; programmer emphasize the special nature of the variable assignments
+; (compared to the later expressions in a let statement).
+let
+  x(5) y(7)
+  {x + 5}
+
+let (x(5)) ; Use parentheses
+  {x + x}
+let (x(5) y(7))
+  {x + x}
+</pre>
+
+<p>
+A <i>collecting list</i> is surrounded by the markers &lt;* and *&gt;.
+The &lt;* and *&gt; represent opening and closing
+parentheses, but restart indentation processing
+at the beginning instead of disabling indentation processing,
+and collect any sweet-expressions inside.
+The purpose of collecting lists is to make it easy to clearly
+express these and similar use cases.
+</p>
+
+<p>
+In a collecting list, horizontal spaces after the initial &lt;*
+are consumed, and then sweet-expressions are read.
+These t-expressions must not be indented (though you can indent
+lines with only ;-comments).
+</p>
+
+<p>
+Here an example of using collecting lists for the library structure above:
+</p>
+<pre>
+define-library
+  example grid
+  export make rows cols ref each rename(put! set!)
+  import scheme(base)
+  &lt;* begin
+
+define make(n m)
+  let (grid(make-vector(n)))
+    do (i(0 {i + 1}))
+    ! {i = n} grid
+    ! let (v(make-vector(m #f alse))) vector-set!(grid i v)
+
+define rows(grid) vector-length(grid)
+define cols(grid) vector-length(vector-ref(grid 0))
+
+define ref(grid n m)
+  and
+    {-1 &lt; n &lt; rows(grid)}
+    {-1 &lt; m &lt; cols(grid)}
+    vector-ref vector-ref(grid n) m
+
+define put!(grid n m v) vector-set!(vector-ref(grid n) m v)
+*&gt;
+</pre>
+
+<p>
+Here are some examples of collecting lists for the let-variable cases:
+</p>
+<pre>
+let &lt;* x 5 *&gt;
+  {x + x}
+; ==&gt; (let ((x 5)) (+ x x))
+
+let &lt;* x 5 \\ y 7 *&gt;
+  {x + x}
+; ==&gt; (let ((x 5) (y 7)) (+ x x))
+</pre>
+
+
+<p>
+The collecting list symbols are carefully chosen.
+The characters &lt; and &gt; are natural character pairs that are
+available in ASCII.
+What is more, they are not delimiters, so any underlying
+Scheme reader will not immediately stop on reading them
+(making it easier to reuse).
+The &#8220;*&#8221; is more arbitrary, but the collecting list markers
+need to be multiple
+characters to distinguish them from the less-than and greater-than procedures,
+and this seemed to be a fairly distinctive token that is rarely used
+in existing code.
+</p>
+
+<h3 id="reserved">Reserved marker ($$$)</h3>
+<p>
+It seems prudent to have a symbol available for future expansion.
+Thus, the marker <tt>$$$</tt> is reserved for future use.
+This means that <tt>$$$</tt>
+must be escaped (e.g., using {...}) if it is used in an
+indentation-processing context.
+</p>
+
+
+<h2 id="comparisons">Comparisons to other notations</h2>
+<p>
+The following subsections compare sweet-expressions to a few
+of the many alternative notations that exist
+(including some alternatives created during its construction).
+</p>
+
+
+<h3 id="m-expressions">Comparison to M-expressions</h3>
+
+<p>
+M-expressions (or meta-expressions) are a notation
+developed by John McCarthy, and were intended to be
+the primary notation for developing software in Lisp.
+As later explained by
+<a href="http://www-formal.stanford.edu/jmc/history/lisp/node3.html">
+John McCarthy in &#8220;History of Lisp&#8221; (1979-02-12)</a>,
+&#8220;The project of defining M-expressions precisely and compiling them or
+at least translating them into S-expressions was neither finalized nor
+explicitly abandoned. It just receded into the indefinite future, and a
+new generation of programmers appeared who preferred internal notation
+to any FORTRAN-like or ALGOL-like notation that could be devised.&#8221;
+</p>
+<p>
+Documents such as the
+<a href="http://www.softwarepreservation.org/projects/LISP/book/LISP%201.5%20Programmers%20Manual.pdf">LISP 1.5 Programmer&#8217;s Manual</a>
+do hint at the intended syntax of M-expressions.
+Function names were written in lower case letters
+(to distinguish them from atoms, which were only upper case),
+followed by a pair of square brackets.
+Inside the square brackets were semicolon-separated arguments.
+Thus, the M-expression
+<tt>cons[A;&nbsp;(B&nbsp;C)]</tt>
+represented the s-expression
+<tt>(cons&nbsp;A&nbsp;(B&nbsp;C))</tt>;
+if computed it would produce
+<tt>(A&nbsp;B&nbsp;C)</tt>.
+M-expressions included some other features, for example:
+</p>
+<ul>
+<li>
+The special infix operator &#8220;=&#8221;
+could be used to define new functions, and thus was a synonym
+for Scheme&#8217;s &#8220;define&#8221;.
+An example of its expected use was:
+<pre>
+    third[x]=car[cdr[cdr[x]]]
+</pre>
+</li>
+<li>
+A conditional expression of the form
+<tt>[p1 &rarr; e1 ; p2 &rarr; e2 ; ... pn &rarr; en]</tt>
+evaluated each p left-to-right; where the first is true,
+its corresponding e is returned.
+This presumably could map to
+<tt>(cond (p1 e1) (p2 e2) ... (pn en))</tt>.
+</li>
+</ul>
+
+<p>
+The fundamental problem with M-expressions was that they were not general.
+When a new syntactic structure was created
+(e.g., with a macro), the new construct could easily be
+accessed using s-expressions, but not with M-expressions.
+Also, M-expressions were never widely implemented;
+if you wanted to actually use a Lisp-based language, you had to
+use s-expressions.
+</p>
+
+<p>
+Sweet-expressions avoid these problems of M-expressions.
+The sweet-expression notation is not tied to any particular semantic,
+and it has been implemented multiple times.
+</p>
+
+<h3 id="honu">Comparison to Honu</h3>
+<p>
+Honu, as described in
+<a href="http://www.cs.utah.edu/plt/publications/gpce12-rf.pdf">
+Honu: Syntactic Extension for Algebraic Notation
+through Enforestation</a>, is
+&#8220;a new language that fuses traditional algebraic notation
+(e.g., infix binary operators) with Scheme-style language extensibility.
+A key element of Honu&#8217;s design is an enforestation parsing
+step, which converts a flat stream of tokens into an S-expression-
+like tree, in addition to the initial &#8216;read&#8217;
+phase of parsing and interleaved with the &#8216;macro-expand&#8217; phase.
+We present the design of Honu, explain its parsing and macro-extension
+algorithm, and show example syntactic extensions.&#8221;
+</p>
+<p>
+In particular, the Honu authors state that their
+&#8220;immediate goal is to produce a syntax that is
+more natural for many programmers than Lisp notation -
+most notably, using infix notation for operators -
+but that is similarly easy for programmers to extend.
+Honu adds a precedence-based parsing step to a Lisp-like
+parsing pipeline to support infix operators and syntax unconstrained
+by parentheses. Since the job of this step is to turn a relatively
+flat sequence of terms into a Lisp-like syntax tree, we call it
+enforestation.
+Enforestation is not merely a preprocessing of program text;
+it is integrated into the macro-expansion machinery so
+that it obeys and leverages binding information to support hygiene,
+macro-generating macros, and local macro binding - facilities that
+have proven important for building expressive and composable language
+extensions in Lisp, Scheme, and Racket.&#8221;
+An example of its syntax, per its paper, is:
+</p>
+
+<pre>
+function quadratic(a, b, c) {
+  var discriminant = sqr(b) - 4 * a * c
+  if ( discriminant &lt; 0) {
+    []
+  } else if (discriminant == 0) {
+    [-b / (2 * a)]
+  } else {
+    [-b / (2 * a), b / (2 * a)]
+  }
+}
+</pre>
+
+<p>
+At the surface, perhaps the most obvious difference is that
+Honu uses {} for major structures, in a way that looks somewhat similar
+to C, instead of using indentation.
+This means that, like Scheme and C, users must use tools to keep
+the visual indentation consistent with the {} that are actually used
+to nest constructs... leading to the risk that they will go out of sync
+(misleading human readers).
+Another obvious difference is that Honu supports user-defined
+precedence levels; as noted in SRFI-105, this causes trouble in dealing
+with operators if the precedence is defined differently in different
+code sections, and also makes it more difficult for human readers to
+determine where lists begin and end.
+</p>
+
+<p>
+There are some surface similarities as well.
+Honu does support a more traditional-looking function call notation,
+of the form &#8220;quadratic(a,&nbsp;b,&nbsp;c)&#8221;.
+Sweet-expressions accept a similar function call format,
+though without the commas (which we found were annoying in practice,
+as they were extraneous and interfered with the comma operator).
+Both Honu and sweet-expressions accept infix notation,
+which are essentially universally used
+elsewhere, though with some minor differences in syntax
+(in part due to Honu&#8217;s use of precedence).
+</p>
+
+<p>
+But Honu&#8217;s major approach is fundamentally different;
+the syntax is actually embedded with the language,
+making it difficult to separate the two:
+&#8220;To handle infix syntax, the Honu parser relies on an
+enforestation phase that converts a relatively flat sequence of
+terms into a more Scheme-like tree of nested expressions.
+Enforestation handles operator precedence and the relatively
+delimiter-free nature of Honu syntax, and it is macro-extensible.
+After a layer of enforestation, Scheme-like macro expansion takes over
+to handle binding, scope, and cooperation among syntactic forms.
+Enforestation and expansion are interleaved,
+which allows the enforestation process to be sensitive to bindings.&#8221;
+Honu&#8217;s approach enables new syntaxes and meanings to be installed,
+which its authors presumably expect to be a good thing,
+but this approach also has significant downsides.
+</p>
+
+<p>
+Honu&#8217;s approach appears to impede generality.
+For example, {...} is defined as starting
+&#8220;a new sequence of expressions that evaluates
+to the last expression in the block.&#8221;
+Note that this definition is more than simply the definition of a list
+in terms of syntax; the notion of how to calculate it seems to be
+embedded in the syntax.
+Honu&#8217;s approach seems to be at odds with the idea that a notation
+should be <i>independent</i> of the evaluation approach.
+</p>
+
+<p>
+Honu&#8217;s approach certainly sacrifices homoiconicity.
+The whole Honu process invokes macros that can transform the results.
+What&#8217;s more, these macros can be defined later.
+As a result, it is not possible to know what a syntactic construct means
+without knowing all the transformation definitions active at the time
+the construct was read.
+The precedence definitions for infix operators are an example of
+this problem, but this turns out to be systemic in Honu.
+In short,
+Honu&#8217;s approach is at odds with the idea that
+a human reader should be able to read just that surface syntax,
+without knowing anything about what macros are active,
+and still know what exactly what the underlying structure will be.
+</p>
+
+<p>
+Another complication with Honu is that it is not backwards-compatible
+with existing Lisp constructs.
+In Honu, the &#8220;(expression)&#8221; production
+&#8220;performs the traditional role
+of parenthesizing an expression to prevent surrounding operators
+with higher precedences from grouping with the constituent parts
+of the expression&#8221;.
+It seems that internally,
+the base Honu reader <em>does</em> read it in
+as a single-item list.
+But the subsequent enforestation step
+removes any extra layers of parentheses.
+This semantic is similar to many other languages, but it means
+that a Honu reader cannot double as a Scheme reader.
+In contrast, most users could silently switch to a sweet-expression reader
+and have no idea that a change had occurred, since normally-formatted
+Scheme expressions will continue to work unchanged.
+This means it is much easier to transition to sweet-expressions.
+</p>
+
+<p>
+Honu&#8217;s approach ties together
+desugaring and macro-expansion;
+the text &#8220;<code>foo(bar, quux)</code>&#8221;
+is two datums,
+&#8220;<code>foo</code>&#8221; and &#8220;<code>(bar |,| quux)</code>&#8221;,
+and the enforestation step
+(which doubles as the macro-expansion step)
+converts it to &#8220;<code>(foo bar quux)</code>&#8221;
+at the Racket level.
+Honu&#8217;s macros are not actually the same type as
+the hosting Racket implementation&#8217;s macros.
+A <code>honu-block</code> Racket macro
+calls the enforest routine,
+which then calls Honu-level macros.
+</p>
+
+<p>
+Fundamentally, the Honu approach
+sacrifices both generality and homoiconicity to achieve readability.
+In addition, its use of {...} creates the
+risk that visual indentation will be inconsistent with
+the actual expression structure.
+We applaud Honu&#8217;s goal of readability,
+but do not believe its sacrifices are necessary to achieve that goal.
+</p>
+
+<h3 id="q2">Comparison to Q2</h3>
+<p>An interesting
+experimental notation, &#8220;Q2&#8221;, was developed by Per Bothner; see
+<a href="http://per.bothner.com/blog/2010/Q2-extensible-syntax/"
+rel="nofollow">http://per.bothner.com/blog/2010/Q2-extensible-syntax/</a>.
+</p>
+<p>Q2 has somewhat similar goals to the &#8220;readable&#8221; project, though
+with a different approach. The big difference is that David A. Wheeler
+decided it was important to have a general notation for <em>any</em>
+s-expression. Here is a brief additional comparison:</p>
+<ul>
+<li>Sweet-expressions have infix, though not built-in precedence
+(precedence can be implemented by defining <tt>$nfx$</tt>).
+</li>
+<li>Both have &#8220;juxtaposition for function application&#8221;</li>
+<li>Q2 has
+&#8220;Naming a zero-argument function applies it&#8221; but this is awkward, indeed,
+&#8220;The exact rule for a distinguishing between a variable reference
+and a zero-argument function application isn&#8217;t decided yet.&#8221; In
+sweet-expressions, a zero-argument function name is called by adding
+<code>()</code> after it or around it, e.g., <samp>pi()</samp>.</li>
+<li>&#8220;Flexible token format&#8221;
+- both require operators to be delimited.</li>
+<li>&#8220;Use indentation
+for grouping&#8221; - both use indentation for grouping</li>
+<li>&#8220;Block
+expressions yield multiple values&#8221; - In sweet-expressions, you use
+usual Scheme procedures, including value, instead of having special
+syntax.</li>
+<li>REPL: In sweet-expressions, you usually end a line
+with ENTER ENTER. Q2 doesn&#8217;t, but Wheeler worries that you have to be careful
+or it&#8217;ll end where it syntactically might not need to.</li>
+</ul>
+
+<h3 id="p4p">Comparison to P4P</h3>
+
+<p>
+<a href="http://shriram.github.com/p4p/">
+P4P: A Syntax Proposal</a> by Shriram Krishnamurthi
+describes an alternative, more readable format for the Racket implementation
+of Scheme.
+There are some similarities, but many differences.
+</p>
+
+<p>
+P4P supports functional name-prefixing such as f(x),
+just as sweet-expressions do.
+However, function parameters are separated by commas
+(an extra character not typical in Lisp code, and in our experiments
+something of a pain since parameters are very common).
+P4P does not support infix notation at all, even though practically
+all non-Lisp languages support them.
+</p>
+
+<p>
+P4P has a very different view of indentation, compared to
+sweet-expressions.
+In P4P, indentation does not control semantics.
+Instead,
+&#8220;the semantics controls indentation: that is, each construct has
+indentation rules, and the parser enforces them. However, changing the
+indentation of a term either leaves the program&#8217;s meaning unchanged
+or results in a syntax error; it cannot change the meaning of the
+program.&#8221;
+</p>
+
+<p>
+This means that P4P has a large number of special-case syntactic constructs.
+For example, defvar: and deffun: specially use &#8220;=&#8221;,
+if: has intermediate keywords, and so on.
+While this looks nice when you stay within its set, it encounters
+the same problem that McCarthy had with M-expressions: There are always
+new constructs, including ones in meta-languages (not the underlying
+Scheme implementation) and macros.
+The P4P author notes that,
+&#8220;it would be easy to add new constructs such as
+provide:, test:, defconst: (to distinguish from defvar:), and so on&#8221;,
+but this misses the point; the task of defining constructs
+inhibits the use of those constructs, and may be impractical
+if there are syntactic differences at different language levels.
+For example, imagine processing lists where &#8220;deffun&#8221; has a different
+definition than the underlying language; this is trivial with
+s-expressions and sweet-expressions, but not practical using P4P.
+</p>
+
+<p>
+The P4P author notes that, &#8220;the parser can be run in a mode where
+indentation-checking is simply turned off...
+This can be beneficial when dealing with program-generated code.&#8221;
+However, now the developer must deal with enabling various modes,
+and this mode is needed not just for program-generated code, but for
+code that has mixtures of various languages.
+Rather than having multiple modes, a single mode that works everywhere
+seems more useful to the developers of the sweet-expression notation.
+</p>
+
+<p>
+In short, P4P fails to be general; it is tied to specific semantics.
+Previous readability efforts, such as M-expressions, failed,
+and we believe that one reason was that those notations
+failed to be general.
+We applaud the admirable goals of P4P, but do not think it represents
+the best way forward.
+</p>
+
+<p>
+However, while we believe different design choices need to be made,
+we applaud the effort.
+In addition, we believe that
+P4P is additional evidence that people are interested
+in improving the readability of Lisp,
+and that indentation can help do so.
+</p>
+
+<h3 id="z">Comparison to Z</h3>
+
+<!-- Ben Booth reported this 2012-01-02 to readable-discuss -->
+
+<p>
+The
+<a href="http://chrisdone.com/z/">
+&#8220;Z&#8221; language by Chris Done (not related to the Z specification language)</a>
+has been
+<a href="http://www.reddit.com/r/programming/comments/15r6tb/z_a_tiny_strict_impure_dynamically_typed_curried/">
+discussed on Reddit</a>,
+and was reported to the readable-discuss mailinglist
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg00872.html">by Ben Booth on 2013-01-02</a>.
+It&#8217;s an indentation-based lisp-like language, although the
+indentation rules differ somewhat from sweet-expressions.
+</p>
+<p>
+In Z, a whitespace-separated sequence of terms applies to the next, so:
+</p>
+<pre>
+  foo bar mu zot
+</pre>
+<p>
+would parse (in s-expression form) as <tt>(foo (bar (mu zot)))</tt>.
+As its documentation states,
+&#8220;To pass additional arguments to a function, the arguments are
+put on the next line and indented to the column of the first argument&#8221;
+</p>
+<p>
+This is an interesting approach, but David A. Wheeler
+agrees with 1337hephaestus_sc2 on Reddit:
+&#8220;The main idea seems clever, but also too clever.&#8221;
+</p>
+<p>
+Here are a few issues with Z syntax compared to sweet-expressions:
+</p>
+<ol>
+<li>When you have multi-parameter functions, this syntax quickly forces
+you to grow vertically.  This is exactly the opposite of the actual
+real estate available.  Screens are wide and short, and even if you use
+traditional paper sizes it&#8217;s wider than tall (typically 80 characters
+across, ~66 lines down).</li>
+<li>
+Edits in one line could quietly change the meaning of other lines,
+in non-obvious ways.  If you edit a line with children, you have to make
+sure that the lines that follow are moved as well.  An IDE can do this,
+but it&#8217;s concerning if an IDE is a practical necessity to edit files.
+Here is an example of this meaning change; if you started with:
+<pre>
+   fee fie foe fum
+               foo bar
+</pre>
+this would be <tt>(fee (fie (foe fun (foo bar))))</tt>, but merely
+changing &#8220;fie&#8221; to &#8220;faction&#8221; would produce
+<pre>
+   fee faction foe fum
+               foo bar
+</pre>
+which would be interpreted as <tt>(fee (faction (foe fum) (foo bar)))</tt>.
+</li>
+<li>I suspect is that it&#8217;s <i>especially</i> easy to make a mistake with this
+notation in a lisp.  Writing &#8220;cons a b&#8221; would seem reasonable enough,
+but would be interpreted as (cons (a b)).
+</li>
+</ol>
+
+
+<h3 id="genyris">Comparison to Genyris</h3>
+<p>
+<a href="http://code.google.com/p/genyris/">Genyris</a> is another
+indentation-based Lisp.
+&#8220;All Genyris expressions are parsed and stored as linked-lists. A single
+line is converted into a single list. Sub-expressions are denoted in two
+ways, either within parentheses on a single line, or by an indented line.
+For example the following line contains two sub-expressions:
+</p>
+<pre>
+Alpha (Beta Charlie) (Delta)
+</pre>
+<p>
+&#8220;Sub-expressions made using parentheses must remain within a single line,
+they are not permitted to wrap. Indented lines are deemed to be
+sub-expressions of the superior, less indented, lines above. The above
+expression can be written in indented form as follows:&#8221;
+</p>
+<pre>
+Alpha
+Beta Charlie
+Delta
+</pre>
+<p>
+Thus, it is similar to the main rule of t-expressions, except that
+<a href="http://code.google.com/p/genyris/">Genyris</a> wraps
+&#8220;ALL sublines in lists, even if they consist of a single element.&#8221;
+As
+Beni Cherniavsky-Paskin notes,
+&#8220;It can get away with that simpler rule because all data objects are
+callable and eval to [themselves]...
+In fact it&#8217;s much cleverer, though that&#8217;s irrelevant for us.
+All objects are actually macros (&#8220;lazy functions&#8221; in the manual&#8217;s
+terminology). What objects do if called with arguments - e.g. (&#8220;foo&#8221; arg1
+arg2) - is evaluate those arguments in a dynamic-binding env enriched by
+the object&#8217;s methods, and return the last value.
+Dynamic scope only affects names starting with a dot, other names use
+lexical scoping.
+All this forms a clever implementation of method calling:
+</p>
+<pre>
+"ball" (.replace "l" "na")
+"banana"
+</pre>
+<p>
+While interesting, this notation is less useful for general-purpose
+s-expressions, in particular, it makes it more
+difficult to notate simple atoms.
+</p>
+
+<h3 id="arne">Comparison to the &#8220;Arne formulation&#8221;</h3>
+<p>On <a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01047.html">
+2013-02-08, Arne Babenhauserheide made an alternative indentation proposal</a>
+and posted it on the readable-discuss mailing list.
+</p>
+
+<p>
+Aside from the basic indentation-means-subitem,
+it has the following important points:
+</p>
+
+<ol>
+<li>
+The marker &#8220;<code>:</code>&#8221; indicates that an indentation
+is explicitly placed at the column
+where that marker is.
+That is, you might conceptually consider it
+as ending a line,
+then inserting an indentation to that column position,
+followed by the text after the <code>:</code>.
+As a precis, a <code>:</code> on an indented line by itself
+is a placeholder
+indicating an indentation at its column position,
+similar to our GROUP <code>\\</code> marker.
+For example, the following are equivalent:
+<table border="1" cellpadding="4">
+<tr>
+<th>Arne formulation</th>
+<th>Basic indentation format</th>
+<th>s-expression</th></tr>
+<tr>
+<td><pre>
+let : : x : compute 'x
+      : y : compute 'y
+    use x y
+</pre></td>
+<td><pre>
+let
+    :
+      x
+          compute 'x
+      y
+          compute 'y
+    use x y
+</pre></td>
+<td><pre>
+(let
+    (
+      (x
+          (compute 'x))
+      (y
+          (compute 'y)))
+    (use x y))
+</pre></td>
+</tr>
+</table>
+</li>
+<li>
+A single datum on a line by itself without a child line
+is a single-item list;
+this is unlike in SRFI-49 or this SRFI,
+where a single datum on a line by itself
+without a child line is just that datum.
+<table border="1" cellpadding="4">
+<tr><th>Arne formulation</th><th>s-expression</th></tr>
+<tr>
+<td><pre>
+foo
+(bar)
+5
+#f
+</pre></td>
+<td><pre>
+(foo)
+((bar))
+(5)
+(#f)
+</pre></td>
+</tr>
+</table>
+</li>
+<li>
+The marker &#8220;<code>.</code>&#8221;,
+when it starts a line,
+splices the list after it into the parent list.
+This is primarily used
+to turn the single-item lists
+formed by the previous rule
+into actual single datums.
+<table border="1" cellpadding="4">
+<tr><th>Arne formulation</th><th>s-expression</th></tr>
+<tr>
+<td><pre>
+foo
+  bar
+  . 5
+  . #f #t "hello"
+</pre></td>
+<td><pre>
+(foo
+  (bar)
+  5
+  #f #t "hello")
+</pre></td>
+</tr>
+</table>
+</li>
+<li>
+Inconsistent dedents are accepted.
+For example,
+the following text is accepted in Arne&#8217;s formulation,
+but would be rejected as an error by this SRFI:
+<table border="1" cellpadding="4">
+<tr><th>Arne formulation</th><th>s-expression</th></tr>
+<tr>
+<td><pre>
+foo
+    bar quux
+  kuu nitz
+</pre></td>
+<td><pre>
+(foo
+    (bar quux)
+  (kuu nitz))
+</pre></td>
+</tr>
+</table>
+</li>
+</ol>
+
+<p>
+After being proposed, it was suggested that the rule 2 above
+should be amended
+to be similar to equivalent rules in SRFI-49 and this SRFI;
+that is, a single datum on a line by itself
+should be only that datum, not wrapped in a list.
+Further, a &#8220;.&#8221; marker followed by
+a single datum without a child line should be a no-op.
+</p>
+<p>
+Rule 2 was formulated that way since the intention was
+to build an indentation processor, not a full parser.
+However, further discussion revealed
+that a simple rule could be formulated
+to differentiate between one-item and two-item lines;
+specifically, a space outside of parentheses or strings
+indicated that the line had two or more items.
+Thus even a simple indentation processor
+could support SRFI-49-like rule 2.
+</p>
+
+<p>
+This proposal was initially quite attractive
+(at least to Alan Manuel K. Gloria).
+It is simpler to describe informally,
+and appears, at first glance,
+to replace many actual uses for
+GROUP/SPLIT, SUBLIST, and COLLECTINGLIST.
+Thus, it was hoped that these three extensions
+could be removed with the simpler <code>:</code> marker rule.
+</p>
+
+<p>
+However, there are use cases
+where SUBLIST has superior semantics
+over Arne&#8217;s <code>:</code>.
+For instance, consider the following SUBLIST code:
+</p>
+<pre>
+call/cc $ lambda (exit)
+  body
+  ...
+</pre>
+<p>
+Replacing this with Arne&#8217;s <code>:</code> requires
+further indenting the body
+to after the <code>:</code> marker.
+</p>
+<pre>
+call/cc : lambda (exit)
+            body
+            ...
+</pre>
+<p>
+With Arne&#8217;s formulation, a trade-off exists:
+either
+(1) add a separate line for the <code>lambda</code>
+(which increases vertical lines
+in exchange for reduced indentation),
+or (2) use <code>:</code>
+(which increases horizontal indentation
+in exchange for reduced vertical lines).
+</p>
+<table border="1" cellpadding="4">
+<tr><th>either (1)</th><th>or (2)</th></tr>
+<tr>
+<td><pre>
+call/cc
+  lambda (exit)
+    body
+    ...
+</pre></td>
+<td><pre>
+call/cc : lambda (exit)
+            body
+            ...
+</pre></td>
+</tr>
+</table>
+
+<p>
+SUBLIST is powerful precisely because it collects child lines.
+This allows you to simultaneously reduce
+horizontal indentation and vertical lines.
+</p>
+
+<p>
+The <code>:</code> and <code>.</code> markers
+are also insufficient replacements for GROUP/SPLIT.
+At first glance it might seem that <code>.</code> is superior
+to the SPLIT meaning of <code>\\</code>:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>Arne&#8217;s formulation</th><th>sweet-expression</th></tr>
+<tr>
+<td><pre>
+export
+  . api-init api-use api-close
+</pre></td>
+<td><pre>
+export
+  api-init \\ api-use \\ api-close
+</pre></td>
+</tr>
+</table>
+<p>
+But we expect that more typically,
+you want to express the code that looks like this:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>Arne&#8217;s formulation</th><th>sweet-expression</th></tr>
+<tr>
+<td><pre>
+begin
+  . (display "Welcome, ") (display player) (display ", to the Dungeons!") (newline)
+</pre></td>
+<td><pre>
+begin
+  display "Welcome, " \\ display player \\ display ", to the Dungeons!" \\ (newline)
+</pre></td>
+</tr>
+</table>
+<p>
+If you truly want several single items to be spliced,
+the following trick takes advantage
+of the fact that indentation processing
+is disabled inside parentheses:
+</p>
+<pre>
+export . (
+  api-init api-use api-close
+)
+</pre>
+<p>
+Arne&#8217;s formulation also does not have
+a method to conveniently express
+a single gigantic top-level datum
+that contains several complex sub-datums,
+a.k.a. the <code>define-library</code> problem.
+</p>
+<pre>
+&lt;* define-library \\ (example)
+import (scheme base)
+export . (
+  example-init
+  example-open example-close
+)
+&lt;* begin
+
+define example-init()
+  whatever ...
+  ...
+
+define example-open(x)
+  whatever ...
+  ...
+
+define example-close(y)
+  whatever ...
+  ...
+
+*&gt;; begin
+*&gt;; define-library
+</pre>
+<p>
+We could retain COLLECTINGLIST,
+and live without the SPLIT behavior,
+or even SUBLIST,
+though this would be important losses.
+Conversely, they could be re-added, but at
+that point, its simplicity has completely disappeared.
+But these ignore the biggest problem.
+</p>
+<p>
+The most important problem with this proposal
+is that it falsely assumes
+that it&#8217;s possible to know the visual width of different characters.
+In today&#8217;s world, this is impractical, especially across
+the many different implementations of Scheme and other Lisps.
+</p>
+<p>
+Most obviously this presumption is false on systems with variable-width
+fonts, and these are widely used for email messages.
+You simply cannot presume you know anything about the actual widths
+of different character sequences in this case.
+</p>
+<p>
+Even when only Western symbol sets are used,
+some letters can or must be expressed using combining characters.
+In these cases, what is stored as two characters are supposed
+to be displayed as one.
+</p>
+<p>
+For another example, some East Asian characters,
+<a href='http://www.unicode.org/reports/tr11/'>called fullwidth characters</a>,
+should be displayed on two columns
+even on a fixed-width font display.
+In Arne&#8217;s formulation,
+the width of non-whitespace characters
+is significant,
+since the <code>:</code> marker can record
+the column position
+after non-whitespace characters occur.
+This SRFI, on the other hand,
+requires recording only the column position
+of horizontal whitespace characters;
+we handle the different possible widths
+of the TAB character
+by requiring consistent indentation.
+</p>
+<p>
+Arne&#8217;s formulation requires either that implementations
+know all fullwidth characters
+(a much longer list
+than the list of horizontal whitespace characters),
+or would leave handling of fullwidth characters
+up to implementations,
+meaning that indentation expressions
+have potential portability problems.
+</p>
+<p>
+Granted that almost all code will not utilize symbols
+containing fullwidth East Asian glyphs,
+one must consider <em>strings</em>
+containing fullwidth East Asian glyphs,
+which we expect to occur regularly in East Asia.
+</p>
+<p>
+This also brings the issue of character encoding.
+To properly recognize fullwidth characters,
+the encoding must be known.
+Granted, many East Asian-specific encodings
+use two bytes for fullwidth characters,
+and one byte for halfwidth characters.
+So a simple byte-as-character interpretation
+would keep track of column positions correctly,
+if you are using such a East Asian-specific encoding.
+Until you re-encode the text into UTF-8.
+</p>
+<p>
+UTF-8 use is spreading;
+it can encode any Unicode code point,
+and is largely back-compatible with ASCII.
+But East Asian fullwidth characters
+do not necessarily encode in two bytes in UTF-8.
+Not to mention that many more characters in UTF-8
+are encoded in 3 or more bytes
+but do not take 3 or more columns,
+just one.
+Even if these characters do not not occur in identifiers,
+the characters can occur in strings,
+and such strings might usefully be placed before
+a <code>:</code> marker.
+</p>
+<p>
+If we are sensitive to only initial indentation,
+then we need only worry about the widths of two characters,
+TAB and SPACE (and <code>!</code> for this SRFI).
+This causes no problems in this SRFI, because
+indentation is required to be consistent across lines.
+In contrast, in Arne&#8217;s proposal,
+we need to worry about the widths of every character,
+and also know the encoding.
+Scheme code (and Lisp code in general)
+will increasingly need to embed strings
+with international (non-ASCII) characters,
+and R7RS at least allows optional support for symbols
+that contain international (non-ASCII) characters.
+R6RS mandates that support.
+</p>
+
+<p>
+After discussion,
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01097.html">this proposal was turned down
+by the authors of this SRFI</a>.
+</p>
+
+<h3 id="closing-sublist-unmatched-dedent">Closing SUBLIST by unmatched dedent (&#8220;Beni Formulation of SUBLIST&#8221)</h3>
+<p>
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01082.html">
+On 2013-02-18, Beni Cherniavsky-Paskin
+proposed an extension of SUBLIST semantics, to
+&#8220;allow closing SUBLIST by [partial] dedenting&#8221;</a>.
+Informally, in Beni&#8217;s proposed extension,
+any occurrence of SUBLIST would mark a fresh indent level,
+which could be matched by an otherwise-unmatched dedent.
+For example:
+</p>
+<table border="1" cellpadding="4">
+<tr><th>Extended SUBLIST</th><th>Equivalent</th></tr>
+<tr>
+<td><pre>
+outer1 outer2 $ inner1
+! ! inner2
+! outer3
+</pre></td>
+<td><pre>
+outer1 outer2
+! inner1
+! ! inner2
+! outer3
+</pre></td>
+</tr>
+<tr>
+<td><pre>
+let $
+! ! x $ compute 'x
+! ! y $ compute 'y
+! use x y
+</pre></td>
+<td><pre>
+let
+! \\
+! ! x $ compute 'x
+! ! y $ compute 'y
+! use x y
+</pre></td>
+</tr>
+</table>
+
+<p>
+The original formal description by Beni Cherniavsky-Paskin,
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01100.html">
+as expanded by Alan Manuel K. Gloria</a>,
+involves moving SUBLIST and SPLIT processing
+from the parser to the indentation preprocessor
+(i.e. the part that inserts INDENT and DEDENT tokens).
+In the current specifications, the indentation preprocessor
+handles a stack of indentations
+(in the implementation, a cons-cell stack of strings).
+Beni&#8217;s formulation expands this stack
+to include the special indentation marker <code>?</code>.
+In the succeeding formal description,
+we assume two variables,
+the <code>indentation-stack</code>
+and <code>current-indentation</code>.
+</p>
+
+<ol>
+<li>
+On encountering a SUBLIST,
+consume the SUBLIST and emit INDENT.
+Push <code>?</code> on <code>indentation-stack</code>.
+</li>
+<li>
+On encountering an inline GROUP/SPLIT
+(i.e. SPLIT meaning),
+consume it, then:
+<ol>
+<li>
+If <code>indentation-stack</code>&#8217;s top is <code>?</code>:
+Pop off every <code>?</code>
+on top of <code>indentation-stack</code>
+and emit DEDENT for each popped item.
+</li>
+<li>
+Otherwise, emit SAME.
+</li>
+</ol>
+</li>
+<li>
+On encountering an EOL,
+consume it,
+then consume indentation whitespace
+(<code>(TAB | SPACE | !)*</code>)
+and put it in <code>current-indentation</code>.
+Then:
+<ol>
+<li>
+If the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is &#8220;not consistent&#8221; with <code>current-indentation</code>,
+signal a bad indent error (BADDENT).
+</li>
+<li>
+If the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is less than <code>current-indentation</code>,
+push <code>current-indentation</code> on <code>indentation-stack</code>
+and emit INDENT.
+</li>
+<li>
+If the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is equal to <code>current-indentation</code>:
+<small>(note: this is a copy of 2.1 and 2.2 above)</small>
+<ol>
+<li>
+If <code>indentation-stack</code>&#8217;s top is <code>?</code>:
+Pop off every <code>?</code>
+on top of <code>indentation-stack</code>
+and emit DEDENT for each popped item.
+</li>
+<li>
+Otherwise, emit SAME.
+</li>
+</ol>
+</li>
+<li>
+Otherwise, the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is greater than <code>current-indentation</code>:
+<ol>
+<li>
+Pop off stack items until
+<code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is less than or equal to <code>current-indentation</code>;
+emit a DEDENT for each popped item.
+</li>
+<li>
+If the <code>indentation-stack</code>&#8217;s topmost non-<code>?</code> item
+is equal to <code>current-indentation</code>,
+pop off all <code>?</code> and emit a DEDENT for each.
+</li>
+<li>
+Otherwise, if the <code>indentation-stack</code>&#8217;s top is <code>?</code>,
+pop it off and push <code>current-indentation</code> on the stack.
+</li>
+<li>
+Otherwise, this is a DEDENT
+that is not matched by an earlier INDENT
+and is not matched by an earlier SUBLIST,
+so signal an error (BADDENT).
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+
+<p>
+This extension of SUBLIST
+turns out to be backward-compatible
+with the current SUBLIST semantics,
+in the sense that
+any SUBLIST-using text
+constructed using the current SUBLIST semantics
+would have <em>exactly</em> the same meaning
+in Beni&#8217;s extended SUBLIST semantics.
+This is a significant advantage
+as it means we can apply this extended rule
+at any future time
+without fear of breaking existing code.
+</p>
+
+
+<p>
+Alan Manuel K. Gloria was excited with this proposal,
+and considered it superior to his original SUBLIST formulation,
+but David A. Wheeler was much more reserved.
+The following concerns were noted about this formulation:
+</p>
+
+<ol>
+<li>
+It complicates explanation of &#8220;$&#8221; and is more difficult to
+describe informally.
+If we used this semantic,
+some people would require
+a second explanation of SUBLIST (&#8220;$&#8221;)
+that is essentially identical
+to the current description here.
+Every time we add a complication,
+we risk losing some potential users and implementers.
+</li>
+<li>
+We leave better-understood parsing theory if this is added.
+Existing approaches
+tend to follow Python or Haskell approaches and specifically
+consider the actual source stream to have matching indentations and
+dedentations.
+We want to have this easily implemented, with many reasons to
+be confident that it is well-designed;
+the more we leave established theory, the harder it is to do that.
+David A. Wheeeler in particular wanted
+to make sure that the constructs are clearly and
+unambiguously defined as part of some well-checked BNF grammar.
+</li>
+<li>
+It complicates the definition of the notation and weakens error-checking
+for correctness of the notation.
+Moving handling from the parser to the indentation preprocessor
+meant that many tools for proving parser correctness (i.e. ANTLR)
+could not be used on the extended handling.
+We want this notation to work &#8220;because it&#8217;s clearly correct&#8221;;
+using ANTLR to check it rigorously is a valuable way to get there.
+In addition, the formal rules
+for this extended SUBLIST
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01105.html">
+are difficult to reason about
+(&#8220;(pft)... That&#8217;s the sound of my head exploding&#8221;)</a>.
+</li>
+<li>
+It complicates the implementation.
+</li>
+<li>
+This partly disables error-checking for code that uses sweet-expressions.
+With this, incorrect indentation after uses of SUBLIST
+become a potential source of silently passed mistakes.
+</li>
+<li>
+It can be viewed as complicating the reading of code that uses it.
+Up to this point, a dedent always ended the whole line above; now it
+can end it a part.
+It is unclear that the reduction in line count is fair compensation.
+</li>
+<li>
+It&#8217;s not clear (at least to David A. Wheeler)
+that there&#8217;s enough <i>value</i> to adding it.
+&#8220;There *ARE* use cases, and these use cases are
+definitely common enough to discuss doing something special with them.
+But I worry that the contravening downsides will overwhelm it.
+Currently, in certain cases we have to add &#8216;\\&#8217; -only lines;
+that&#8217;s not really
+a hardship, especially since the resulting constructs
+are pretty easy to understand.&#8221;
+In particular, the given <code>let</code> example above remains
+(as of the time of this writing)
+the only significant use case
+for Beni&#8217;s extended SUBLIST formulation,
+and there are already other relatively-painless
+ways to handle this construct.
+</li>
+<li>
+This &#8220;partial dedenting&#8221; approach is
+backwards-compatible with the current specification,
+and thus could be added <i>later</i> if desired.
+</li>
+</ol>
+
+<p>
+David A. Wheeler mentioned the possibility of using
+a PARTIAL_DEDENT token
+so that full Beni formulation of SUBLIST
+could be handled completely in the parser.
+This possibility has not been explored fully as yet.
+It may be explored if further use cases
+for the full Beni formulation
+are found in the future.
+</p>
+
+<p>
+<a href="http://www.mail-archive.com/readable-discuss@lists.sourceforge.net/msg01115.html">
+Alan Manuel K. Gloria continues to hold out hope
+that this extended formulation will get more use-cases</a>,
+but decided not to press for <em>immediate</em> inclusion
+in this SRFI.
+</p>
+
+<p>
+Beni Cherniavsky-Paskin&#8217; himself noted that this proposal is
+&#8220;a backward-compatible extension to SUBLIST (similarly applicable to
+any competing FOOLIST semantics), so we could leave it undecided for now,
+and legalize it later...&#8221;.
+For the moment, that is what we have done; we have ensured that
+it could be added later if turns out to be important to do so.
+</p>
+
+
+
+<h3 id="closing-ending-sublist-results">Variation: Closing end-of-line SUBLIST by unmatched dedent (&#8220;Beni-Lite&#8221;)</h3>
+<p>
+On 2013-02-23, David A. Wheeler counterproposed (for purposes
+of experimentation) a subset of Beni Cherniavsky-Paskin&#8217;s proposal.
+He christened the approach &#8220;Beni-Lite&#8221;,
+and included a sample implementation using ANTLR and its BNF.
+This was eventually rejected, but
+we believe it&#8217;s important to document this approach -
+in part because it could be added later if desired.
+</p>
+<p>
+In this alternative, a &#8220;$&#8221; can be closed by an unmatched partial
+dedent, but only if the &#8220;$&#8221; is at the end of a line and there is
+other text besides any indentation characters.
+The primary argument given for this variant is that it
+covers the primary use cases David A. Wheeler had seen, and
+it is possible to formulate this limited variant while continuing
+to use ANTLR&#8217;s grammar checking.
+It also retains stronger run-time input checking; partial dedents
+are only legal when including &#8220;$&#8221; at the end of the line, making them
+unlikely to use accidentally.
+It is still complicated, but it is not much more complicated than
+notations without unmatched dedents.
+</p>
+<p>
+Here are some sample test cases to demonstrate its impact:
+</p>
+
+<table border="1" cellpadding="4">
+<tr>
+<th>Original Input</th><th>s-expression</th>
+</tr>
+<tr>
+<td>
+<pre>
+let $
+! ! var1 value1
+! body...
+</pre>
+</td>
+<td>
+<pre>
+(let
+  ((var1 value1))
+  body...)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td>
+<pre>
+let $
+! ! var1 value1
+! ! var2 value2
+! body...
+</pre>
+</td>
+<td>
+<pre>
+(let
+  ((var1 value1)
+   (var2 value2))
+  body...)
+</pre>
+</td>
+</tr>
+
+<tr>
+<td>
+<pre>
+let $
+! ! var1 value1
+! ! var2 value2
+! ! var3 value3
+! body1 param1
+! body2 param2
+</pre>
+</td>
+<td>
+<pre>
+(let
+  ((var1 value1)
+   (var2 value2)
+   (var3 value3))
+  (body1 param1)
+  (body2 param2))
+</pre>
+</td>
+</tr>
+</table>
+
+<p>
+The sample implementation tweaked the indent processor so that
+if a dedent doesn&#8217;t match the parent indent, it generates DEDENT
+followed by a RE_INDENT.
+Here is an example of how the modified indent processor could tokenize
+its input:
+</p>
+<!-- Here's sample code, from ANTLR:
+       if (!indents.peek().equals(indent_text)) {
+-       // System.out.print("Generate BADDENT(s)\n");
+-        t.setType(BADDENT);
+-        emit(t);
++        if ( (indents.peek().length() < indent_text.length()) &&
++             (indent_text.length() < deepest.length()) &&
++             deepest.startsWith(indent_text) ) {
++          emit_type(RE_INDENT);
++          indents.push(indent_text);
++        } else {
++          // System.out.print("Generate BADDENT(s)\n");
++          t.setType(BADDENT);
++          emit(t);
++        }
+-->
+
+<table border="1" cellpadding="4">
+<tr>
+<th>Original Input</th><th>Tokenized version</th>
+</tr>
+<tr>
+<td>
+<pre>
+let $
+! ! var1 value1
+! body...
+</pre>
+</td>
+<td>
+<pre>
+let SUBLIST EOL
+INDENT var1 value2 EOL
+DEDENT RE_INDENT body...
+</pre>
+</td>
+</tr>
+</table>
+
+<p>
+The BNF was then changed so that SUBLIST allowed more constructs:
+</p>
+<pre>
+it_expr returns [Object v]
+  : head
+    ...
+     | SUBLIST hspace* /* head SUBLIST ... case */
+       (sub_i=it_expr {(append $head (list $sub_i))}
+        | comment_eol indent sub_b=body
+          ( re_indent partial_out=body
+             {(append (append $head (list $sub_b)) $partial_out)}
+           | empty {(append $head (list $sub_b))} ) )
+  ...
+  | SUBLIST hspace* /* "$" first on line */
+    (is_i=it_expr {(list $is_i)}
+     | comment_eol indent sub_body=body {(list $sub_body)} )
+</pre>
+
+
+<p>
+However, Alan Manuel Gloria reviewed it and stated that,
+&#8220;I think that, conceptually, having a limitation is an additional
+complication when teaching the notation...
+Granted we could just mandate these patterns, but I worry that we are
+now slipping into the &#8216;notation is tied to underlying semantic&#8217; bug.
+Or in this case, &#8216;notation is tied to underlying legacy syntax&#8217;.
+I&#8217;d rather have the full Beni formulation of SUBLIST or the classic
+0.4 formulation, in that preference order.
+I&#8217;ll admit that I don&#8217;t have a use for the full Beni formulation other
+than for let, though.  I suspect there may be further use cases; but I
+haven&#8217;t found any others yet.&#8221;
+</p>
+<p>
+The current notation does not support either approach at this time.
+However, the BNF specifically requires that these constructs be
+detected and forbidden; that way, if future versions add these capabilities,
+it will be known that they cannot have any other meaning in
+existing sweet-expressions.
+</p>
+
+<h2 id="experience">Experience using and implementing sweet-expressions</h2>
+<p>
+At least two programs have been written using sweet-expressions:
+<ul>
+<li><a href="http://readable.sourceforge.net"><i>sweeten</i></a>
+by David A. Wheeler is
+a program that reads traditionally-formatted
+s-expressions and writes sweet-expressions.
+This program performs a great deal of traditional list processing, and
+is part of the &#8220;readable&#8221; project&#8217;s git repository.
+</li>
+<li><a href="https://github.com/AmkG/letterfall"><i>letterfall</i></a>
+by Alan Manuel K. Gloria is a graphical
+real-time touch typing game to improve typing skills, which uses
+GNOME libraries.
+</li>
+</ul>
+<p>
+The SRFI authors believe that the existence of these programs -
+written by two different people for different application areas -
+shows that sweet-expressions are mature enough to be standardized.
+</p>
+<p>
+In addition, the older paper
+<a href="http://www.dwheeler.com/readable/version02.html">Sweet-expressions: Version 0.2 (draft)</a>
+created sweet-expressions versions of a variety of
+expressions in a variety of Lisp-based languages,
+to (1) ensure that the sweet-expression notation is general
+(not tied to some specific semantic), and (2) show that it
+is relatively easy to notate common constructs in sweet-expressions.
+Sweet-expressions were developed for expressions in
+Scheme, Common Lisp, Arc, ACL2, PVS, s-expression BitC,
+AutoCAD Lisp (AutoLisp), Emacs Lisp,
+SUO-KIF, Scheme Shell (Scsh), GCC Register Transfer Language (RTL),
+MiddleEndLispTranslator (MELT),
+Satisfiability Modulo Theories Library (SMT-LIB), NewLisp, Clojure, and ISLisp.
+(Clojure currently uses {...} for a different construct, but
+sweet-expressions could still be used for Clojure.)
+This demonstration provides evidence that the sweet-expression
+notation is sufficiently general and expressive.
+</p>
+<p>
+The sweet-expression notation itself has been implemented at least twice;
+one in ANTLR (an LL(*) parser generator)
+and one in Scheme (as a recursive descent parser).
+Since it has been implemented two different ways, it is less likely to
+be extremely difficult to implement.
+The ANTLR grammar itself has been checked by ANTLR&#8217;s grammar checker
+for ambiguities and other problems.
+Also, ANTLR confirms that the given BNF grammar is LL(1).
+These implementations, and the ANTLR checking, suggest that this
+notation is not too difficult to implement and eliminates the risks
+of certain kinds of grammar flaws.
+These implementations have been peer reviewed.
+In addition, they have passed various test suites;
+the Scheme implementation in particular has passed a test suite
+with hundreds of test cases.
+</p>
+<p>
+The <a href="http://readable.sourceforge.net">Readable Lisp S-expressions Project</a> developed these notations and implementations of them.
+In particular, the project distributes the programs
+<i>unsweeten</i> (which takes sweet-expressions and transforms them
+into s-expressions) and
+<i>sweeten</i> (which takes s-expressions and transforms them into
+sweet-expressions), as well as other related tools.
+</p>
+
+<h2 id="style">Style guide</h2>
+<p>
+Here are some style guidelines that may help you create
+easy-to-read sweet-expressions, based on the
+<a href="http://sourceforge.net/p/readable/wiki/Style/">
+Readable project style guide</a>.
+</p>
+
+<h3>General Guidance</h3>
+
+<p>
+Mentally, this is pretty straightforward - on each line, write an expression; everything after the first term on the line, or all child lines, are parameters of the first term. You can use grouping operators ( ), [ ], and { } to put subexpressions on the same line, if you want. Use -( ... ) to negate something.
+</p>
+
+<p>
+Whenever you have an infix expression, just surround it with {...}. You can use the form f(...) to call a function; if it has zero parameters, express it as f(), and if it has more than one parameter, separate the parameters with spaces. The f(...) form is especially handy for creating short expressions as a parameter on a line; for long expressions, use indentation instead.
+</p>
+
+<h3>Use infix notation</h3>
+
+<p>
+If the function is typically written as infix
+(including &#8220;+&#8221;, &#8220;*&#8221;,
+&#8220;or&#8221;, and &#8220;&lt;&#8221;),
+use {...} to write it as an infix value.
+Generally these operators will be &#8220;and&#8221;, &#8220;or&#8221;,
+or an operator that only uses punctuation.
+If you&#8217;re calling a function with only one parameter, and
+that parameter is calculated with an infix operation, use the f{...} shorthand.
+</p>
+
+<p>
+However, you may want to keep using prefix form if indentation still
+matters and one or more of the parameters is exceedingly complex (e.g.,
+it&#8217;s nested very deeply or includes program structuring forms like
+&#8220;cond&#8221; and &#8220;define&#8221;).
+This situation can often occur with &#8220;and&#8221; and &#8220;or&#8221;
+if you&#8217;re using a functional programming style.
+</p>
+
+<h3>Use indentation for major program/data structure</h3>
+
+<p>
+In general, use indentation to make it easy to see the larger-scale
+structure of a program or data. Typically major structural atoms should
+start a new line, including defining a new term (e.g., &#8220;define&#8221; and
+&#8220;let&#8221;), conditionals (e.g., &#8220;if&#8221; and &#8220;cond&#8221;), and loops (e.g., &#8220;loop&#8221;).
+</p>
+
+<h3>Use function call notation for parameters if they fit in a line</h3>
+
+<p>
+When calling a function, if the parameters will fit easily on a line if
+you use function notation like f(x y(z)), then put them all on a line.
+When you&#8217;re calling a function with no parameters, use function-calling
+format with &#8220;()&#8221; at the end, e.g., &#8220;f()&#8221;.
+In general, indentation is used for the major &#8220;structural&#8221; elements
+of a program, and function calls get used once you&#8217;re &#8220;near the leaf&#8221;
+of structure (where you won&#8217;t go beyond the end of the line).
+</p>
+
+<p>
+If you are providing a list of data (and not performing a function/method
+call), then use the traditional list notation such as
+&#8220;(a&nbsp;b&nbsp;c)&#8221;.
+This is exactly equivalent to &#8220;a(b&nbsp;c)&#8221;,
+but expressing it as a list will give
+the human reader a hint that this data is not considered a potential
+program. If it&#8217;s used as both data and as program, then consider it a
+program, and use function call notation.
+</p>
+
+
+<h3>Avoid unnecessary parentheses</h3>
+
+<p>
+Where it&#8217;s understandable, don&#8217;t include unnecessary parentheses.
+In particular, when indentation processing is active, the name of the
+function is right after the indent, and there are no child lines, simply
+state the function followed by space-separated parameters.
+</p>
+
+<p>
+Both SUBLIST (<code>$</code>) and SPLIT (inline <code>\\</code>)
+allow some limited freedom in laying out the program text
+without disabling indentation processing; feel free to use them.
+For example, in a
+<code>cond</code> construct, you can combine on one line
+a clause&#8217;s test and expression by separating them with <code>$</code>.
+Similarly, the common sequence &#8220;(define (f x) (cond ...))&#8221;
+can be represented by putting <code>define</code> and <code>cond</code>
+on one line and putting <code>$</code> before <code>cond</code>.
+Below are some examples
+that we consider to be quite clear:
+</p>
+<pre>
+define polymorphic-function(a) $ cond
+  type1?(a) $ handle-type1 a
+  type2?(a) $ handle-type2 a
+  type3?(a)
+    display "type3 handling not yet fully operational\n"
+    log-possible-error a
+    handle-type3 a
+  type4?(a) $ cond ; cond-in-cond - very clear
+    type4-subtype1?(a) $ handle-type4-subtype1 a
+    type4-subtype2?(a) $ handle-type4-subtype2 a
+    else               $ error 'polymorphic-function "impossible!" a
+  else      $ error 'polymorphic-function "unrecognized type" a
+
+define probe(x)
+  display "probe: " \\ write x \\ newline()
+
+define buggy-function(a) $ probe $ let ()
+  define buggy-sub-function(b) $ short-call b
+  body
+  ...
+
+define func-w/return(a) $ call/cc $ lambda (return)
+  body ... return(whatever) ...
+</pre>
+
+
+<h3>Width</h3>
+
+<p>
+You should probably stick to an 80-character width for program text.
+</p>
+
+
+<h3>Indentation</h3>
+<p>
+Use a consistent amount of indenting for each level.
+We tend to use
+2 spaces for indentation; indentation nesting is more common in
+sweet-expressions, so 8-character indentations are often too much.
+</p>
+
+<p>
+Consider using &#8220;!&#8221; followed by space if you&#8217;re using a medium
+that hides indentation,
+or want to highlight a particular vertical group.
+However, beware if you start a paired expression and let it continue to
+the next line; the &#8220;!&#8221; is <i>not</i>
+an indent character inside parentheses, braces, or brackets.
+</p>
+
+<!-- See original page for "notes about cond", etc. -->
+
+
+<h1><a name="reference-implementation">Reference implementation</a></h1>
+
+<p>The reference implementation is portable, with the exception that
+Scheme provides no standard mechanism to override the built-in reader.
+An implementation that complies with this SRFI must
+at least activate this behavior
+when they read the <code>#!sweet</code> marker
+followed by whitespace.
+</p>
+<p>The reference implementation is SRFI type 2: &#8220;A
+mostly-portable solution that uses some kind of hooks provided in
+some Scheme interpreter/compiler. In this case, a detailed
+specification of the hooks must be included so that the SRFI is
+self-contained.&#8221;</p>
+<p>
+See 
+<a href="kernel.scm">the Scheme source code
+for the reference implementation</a>.
+</p>
+
+<h1><a name="references">References</a></h1>
+<p>The readable project website has more information: <a href=
+"http://readable.sourceforge.net">http://readable.sourceforge.net</a></p>
+
+<h1><a name="acknowledgments">Acknowledgments</a></h1>
+
+<p>We thank all the participants on the &#8220;readable-discuss&#8221;
+and &#8220;SRFI-105&#8221; mailing lists,
+including John Cowan, Shiro Kawai, Per Bothner, Mark H. Weaver,
+Beni Cherniavsky-Paskin, Arne Babenhauserheide, Ben Booth,
+David Vanderson,
+and many others whose names
+should be here but aren&#8217;t.</p>
+
+<h1><a name="copyright">Copyright</a></h1>
+<p>Copyright (C) 2012-2013 <a href="http://www.dwheeler.com">David A. Wheeler</a> and Alan Manuel K. Gloria.
+All Rights Reserved.</p>
+<pre>
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+</pre>
+<pre>
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+</pre>
+<pre>
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY
+OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</pre>
+
+<!-- W3C Validator doesn't like "<hr/>" -->
+
+<hr>
+<address>Editor: <a href="mailto:srfi-editors at srfi dot schemers dot org">
+             Mike Sperber</a></address>
+</body>
+</html>
+
