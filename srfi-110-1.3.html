@@ -51,7 +51,7 @@ This SRFI is currently in ``draft'' status.
 <p>
 This SRFI is currently in &#8220;draft&#8221; status.  To see an explanation of
 each status that a SRFI can hold, see <a
-href="http://srfi.speechcode.com/srfi-process.html">here</a>.
+href="http://srfi.schemers.org/srfi-process.html">here</a>.
 
 To provide input on this SRFI, please
 <a href="mailto:srfi minus 110 at srfi dot schemers dot org">mail to
@@ -85,7 +85,7 @@ but is designed to be easier for humans to read.
 The sweet-expression syntax enables the use of syntactically-meaningful
 indentation to group expressions (similar to Python),
 and it builds on the infix and traditional function notation defined in
-<a href="http://srfi.speechcode.com/srfi-105/">SRFI-105 (curly-infix-expressions)</a>.
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105 (curly-infix-expressions)</a>.
 Unlike nearly all past efforts to improve s-expression readability,
 sweet-expressions are
 general (the notation is independent from any underlying semantic)
@@ -202,16 +202,16 @@ define factorial(n)
 
 <h1><a name="related-srfis">Related SRFIs</a></h1>
 <p>
-<a href="http://srfi.speechcode.com/srfi-49/">SRFI-49
+<a href="http://srfi.schemers.org/srfi-49/">SRFI-49
 (Indentation-sensitive syntax)</a> (superceded by this SRFI),
-<a href="http://srfi.speechcode.com/srfi-105/">SRFI-105
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105
 (Curly-infix-expressions)</a> (incorporated by this SRFI),
-<a href="http://srfi.speechcode.com/srfi-22/">SRFI-22
+<a href="http://srfi.schemers.org/srfi-22/">SRFI-22
 (Running Scheme Scripts on Unix)</a> (some interactions),
-<a href="http://srfi.speechcode.com/srfi-30/">SRFI-30
+<a href="http://srfi.schemers.org/srfi-30/">SRFI-30
 (Nested Multi-line comments)</a> (some interactions),
 and
-<a href="http://srfi.speechcode.com/srfi-62/">SRFI-62
+<a href="http://srfi.schemers.org/srfi-62/">SRFI-62
 (S-expression comments)</a> (some interactions)
 </p>
 
@@ -292,7 +292,7 @@ interactive input differ slightly.
 </p>
 
 <p>
-<a href="http://srfi.speechcode.com/srfi-49/">SRFI-49</a>
+<a href="http://srfi.schemers.org/srfi-49/">SRFI-49</a>
 defined a promising indentation-sensitive syntax for Scheme.
 Unfortunately,
 <a href="#srfi-49">SRFI-49 had some awkward usage issues</a>,
@@ -349,7 +349,7 @@ as follows when indentation processing is active:
 <li>A line with exactly one term, and no child lines, is simply that term; multiple terms are wrapped into a list.</li>
 <li>An empty line ends the expression; empty lines before expressions are ignored.</li>
 <li>Terms are neoteric-expressions as defined in
-<a href="http://srfi.speechcode.com/srfi-105/">SRFI-105</a>.
+<a href="http://srfi.schemers.org/srfi-105/">SRFI-105</a>.
 Thus <samp>{a&nbsp;+&nbsp;b}</samp> maps to <samp>(+&nbsp;a&nbsp;b)</samp>,
 <samp>f(...)</samp> maps to <samp>(f&nbsp;...)</samp>, and
 <samp>f{...}</samp> with non-empty content
@@ -487,13 +487,13 @@ disable sweet-expression indentation processing and
 
 <p>
 A sweet-expression reader <em>SHOULD</em> support
-<a href="http://srfi.speechcode.com/srfi-30/">SRFI-30
+<a href="http://srfi.schemers.org/srfi-30/">SRFI-30
 (Nested Multi-line comments)</a> (<tt>#|</tt>&nbsp;...&nbsp;<tt>|#</tt>)
 and
-<a href="http://srfi.speechcode.com/srfi-62/">SRFI-62
+<a href="http://srfi.schemers.org/srfi-62/">SRFI-62
 (S-expression comments)</a> (<tt>#;</tt><var>datum</var>).
 A sweet-expression reader <em>SHOULD</em> support
-<a href="http://srfi.speechcode.com/srfi-22/">SRFI-22
+<a href="http://srfi.schemers.org/srfi-22/">SRFI-22
 (Running Scheme Scripts on Unix)</a> (where #!+space ignores
 to the end of the line),
 <tt>#!</tt> followed by a letter as a directive
@@ -1858,14 +1858,14 @@ uses colons in a way that is limiting (it interferes with other uses
 of the colon in various Lisp-like languages).</li>
 <li><a href="http://www.lispin.org/">Lispin</a>
 discusses a way to get S-expressions with indentation.</li>
-<li><a href="http://srfi.speechcode.com/srfi-49/srfi-49.html">Scheme
+<li><a href="http://srfi.schemers.org/srfi-49/srfi-49.html">Scheme
 SRFI-49, I-expressions</a> - which are discussed next.
 </ul>
 
 <h3 id="srfi-49">What is the relationship between sweet-expressions and SRFI-49 (I-expressions)?</h3>
 
 <p>The sweet-expression indentation system is based on
-<a href="http://srfi.speechcode.com/srfi-49/srfi-49.html">Scheme
+<a href="http://srfi.schemers.org/srfi-49/srfi-49.html">Scheme
 SRFI-49 (&#8220;surfi-49&#8221;), aka I-expressions</a>.
 The basic rules of SRFI-49
 (I-expression) indentation are kept in sweet-expressions; these are:</p>
