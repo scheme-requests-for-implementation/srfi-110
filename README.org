@@ -8,7 +8,7 @@ This SRFI is in /final/ status.
 
 The full documentation for this SRFI can be found in the [[https://srfi.schemers.org/srfi-110/srfi-110.html][SRFI Document]].
 
-If you'd like to participate in the discussion of this SRFI, or report issues with it, please [[shttp://srfi.schemers.org/srfi-110/][join the SRFI-110 mailing list]] and send your message there.
+If you'd like to participate in the discussion of this SRFI, or report issues with it, please [[https://srfi.schemers.org/srfi-110/][join the SRFI-110 mailing list]] and send your message there.
 
 Thank you.
 
