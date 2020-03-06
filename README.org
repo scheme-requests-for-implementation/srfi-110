@@ -1,6 +1,8 @@
 * SRFI 110: Sweet-expressions (t-expressions)
 
-** by David A. Wheeler, Alan Manuel K. Gloria
+** by David A. Wheeler and Alan Manuel K. Gloria
+
+
 
 This repository hosts [[https://srfi.schemers.org/srfi-110/][SRFI 110]]: Sweet-expressions (t-expressions), a [[https://srfi.schemers.org/][Scheme Request for Implementation]].
 
