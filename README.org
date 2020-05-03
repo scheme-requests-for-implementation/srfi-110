@@ -4,6 +4,8 @@
 
 
 
+keywords: [[https://srfi.schemers.org/?keywords=reader-syntax][Reader Syntax]]
+
 This repository hosts [[https://srfi.schemers.org/srfi-110/][SRFI 110]]: Sweet-expressions (t-expressions), a [[https://srfi.schemers.org/][Scheme Request for Implementation]].
 
 This SRFI is in /final/ status.
