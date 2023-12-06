@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2012 - 2013 Alan Manuel K. Gloria
+# SPDX-FileCopyrightText: 2012 - 2013 David A. Wheeler
+#
+# SPDX-License-Identifier: MIT
+
 * SRFI 110: Sweet-expressions (t-expressions)
 
 ** by David A. Wheeler and Alan Manuel K. Gloria
