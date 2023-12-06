@@ -1,6 +1,9 @@
+// SPDX-FileCopyrightText: 2013 David A. Wheeler
+//
+// SPDX-License-Identifier: MIT
+
 package scheme;
 
-// (C) 2013 David A. Wheeler, released under MIT license.
 // Provide a few traditional Lisp-like functions in Java,
 // just barely enough functionality for sweet.g, but
 // accurate for what it does.
