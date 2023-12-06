@@ -1,0 +1,5 @@
+version = 1
+SPDX-PackageName = "SRFI 110"
+SPDX-PackageSupplier = "Arthur A. Gleckler <srfi-editors@srfi.schemers.org>"
+SPDX-PackageDownloadLocation = "https://github.com/scheme-requests-for-implementation/srfi-110"
+annotations = []
