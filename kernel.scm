@@ -1,3 +1,8 @@
+;;; SPDX-FileCopyrightText: 2005 - 2013 Alan Manuel K. Gloria
+;;; SPDX-FileCopyrightText: 2005 - 2013 David A. Wheeler
+;;;
+;;; SPDX-License-Identifier: MIT
+
 ;;; kernel.scm
 ;;; Implementation of the sweet-expressions project by readable mailinglist.
 ;;;

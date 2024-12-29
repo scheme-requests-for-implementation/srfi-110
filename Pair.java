@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2013 David A. Wheeler
+//
+// SPDX-License-Identifier: MIT
+
 package scheme;
 
 // (C) 2013 David A. Wheeler, released under MIT license.
