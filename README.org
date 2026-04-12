@@ -1,8 +1,6 @@
-# SPDX-FileCopyrightText: 2012 - 2013 Alan Manuel K. Gloria
-# SPDX-FileCopyrightText: 2012 - 2013 David A. Wheeler
-#
-# SPDX-License-Identifier: MIT
 
+# SPDX-FileCopyrightText: 2026 Arthur A. Gleckler
+# SPDX-License-Identifier: MIT
 * SRFI 110: Sweet-expressions (t-expressions)
 
 ** by David A. Wheeler and Alan Manuel K. Gloria
@@ -20,6 +18,5 @@ The full documentation for this SRFI can be found in the [[https://srfi.schemers
 If you'd like to participate in the discussion of this SRFI, or report issues with it, please [[https://srfi.schemers.org/srfi-110/][join the SRFI-110 mailing list]] and send your message there.
 
 Thank you.
-
 
 [[mailto:srfi-editors@srfi.schemers.org][The SRFI Editors]]
